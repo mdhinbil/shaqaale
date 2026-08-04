@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
+import 'cloud_section.dart';
 import 'leaves_screen.dart';
 
 class MoreScreen extends StatefulWidget {
@@ -99,6 +100,8 @@ class _MoreScreenState extends State<MoreScreen> {
               subtitle: Text(store.user?.role ?? 'admin'),
             ),
           ),
+          _label(t('Cloud sync', 'Isku xirka cloud')),
+          const CloudSection(),
           _label(t('Language', 'Luqadda')),
           Card(
             child: Padding(

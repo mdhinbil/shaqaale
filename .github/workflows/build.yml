@@ -47,6 +47,10 @@ jobs:
       - name: Get packages
         run: flutter pub get
 
+      # Replace flutter create's default icon with the Shaqaale HR badge.
+      - name: Generate launcher icons
+        run: dart run flutter_launcher_icons
+
       - name: Analyze
         run: flutter analyze --no-fatal-infos
 

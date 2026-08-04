@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
+import 'cloud.dart';
 
 /// Everything Shaqaale knows, held in memory and mirrored to disk. Keys are
 /// prefixed `hr_` so they don't collide with other MareegTech apps on a shared
@@ -35,6 +36,12 @@ class Store extends ChangeNotifier {
   Future<void> init() async {
     _sp = await SharedPreferences.getInstance();
     _readAll();
+    // Restore a saved cloud session and pull before seeding defaults, so a
+    // device that persisted its session doesn't recreate defaults over real data.
+    try {
+      final applied = await cloud.boot();
+      if (applied > 0) _readAll();
+    } catch (_) {}
     if (accounts.isEmpty) {
       accounts = [
         Account(id: 'a1', name: 'Admin', username: 'admin', password: 'admin123', role: 'admin'),
@@ -97,7 +104,44 @@ class Store extends ChangeNotifier {
     }
   }
 
-  void _write(String k, Object v) => _sp.setString(k, jsonEncode(v));
+  void _write(String k, Object v) {
+    _sp.setString(k, jsonEncode(v));
+    _sp.setInt('hr_ts_$k', DateTime.now().millisecondsSinceEpoch);
+    cloud.queue(k); // debounced push; no-op when not signed in
+  }
+
+  /// Re-read everything from disk (after a cloud pull changed it underneath us).
+  void reload() {
+    _readAll();
+    notifyListeners();
+  }
+
+  /// Replace this device's data with the cloud's for this account.
+  Future<void> adoptCloudData() async {
+    for (final k in cloudKeys) {
+      await _sp.remove(k);
+      await _sp.remove('hr_ts_$k');
+    }
+    await cloud.pull(force: true);
+    _readAll();
+    _ensureDefaults();
+    notifyListeners();
+  }
+
+  Future<void> uploadLocalData() async => cloud.pushAll();
+
+  void _ensureDefaults() {
+    if (accounts.isEmpty) {
+      accounts = [
+        Account(id: 'a1', name: 'Admin', username: 'admin', password: 'admin123', role: 'admin'),
+      ];
+      saveAccounts();
+    }
+    if (departments.isEmpty) {
+      departments = ['Management', 'Finance', 'Operations', 'Sales', 'Support'];
+      saveDepartments();
+    }
+  }
 
   // ── auth ──────────────────────────────────────────────
   bool signIn(String username, String password) {
@@ -146,6 +190,11 @@ class Store extends ChangeNotifier {
 
   void saveDepartments() {
     _write(kDepts, departments);
+    notifyListeners();
+  }
+
+  void saveAccounts() {
+    _write(kAccounts, accounts.map((e) => e.toJson()).toList());
     notifyListeners();
   }
 
