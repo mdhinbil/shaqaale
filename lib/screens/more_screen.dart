@@ -42,6 +42,55 @@ class _MoreScreenState extends State<MoreScreen> {
     _say(t('Saved', 'La kaydiyay'));
   }
 
+  Future<void> _changePassword() async {
+    final cur = TextEditingController();
+    final nw = TextEditingController();
+    final cf = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(t('Change password', 'Beddel furaha')),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+                controller: cur,
+                obscureText: true,
+                decoration: InputDecoration(
+                    labelText: t('Current password', 'Furaha hadda'))),
+            const SizedBox(height: 10),
+            TextField(
+                controller: nw,
+                obscureText: true,
+                decoration: InputDecoration(
+                    labelText: t('New password', 'Furaha cusub'))),
+            const SizedBox(height: 10),
+            TextField(
+                controller: cf,
+                obscureText: true,
+                decoration: InputDecoration(
+                    labelText: t('Confirm new password', 'Xaqiiji furaha cusub'))),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(t('Cancel', 'Jooji'))),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(t('Save', 'Kaydi'))),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    if (nw.text != cf.text) {
+      _say(t('New passwords do not match', 'Furayaasha cusub isma laha'));
+      return;
+    }
+    final err = store.changePassword(cur.text, nw.text);
+    _say(err ?? t('Password changed', 'Furaha waa la beddelay'));
+  }
+
   Future<void> _manageDepartments() async {
     await showModalBottomSheet(
       context: context,
@@ -185,6 +234,16 @@ class _MoreScreenState extends State<MoreScreen> {
                   ),
                 ],
               ),
+            ),
+          ),
+          _label(t('Account', 'Akoonka')),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.password_outlined, color: kBlue),
+              title: Text(t('Change password', 'Beddel furaha')),
+              subtitle: Text(store.user?.username ?? ''),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: _changePassword,
             ),
           ),
           const SizedBox(height: 16),

@@ -161,6 +161,27 @@ class Store extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Change the signed-in account's password. Returns null on success, or a
+  /// human-readable reason it failed.
+  String? changePassword(String current, String next) {
+    final u = user;
+    if (u == null) return 'Not signed in';
+    if (u.password != current) {
+      return t2('Current password is wrong', 'Furaha hadda waa khalad');
+    }
+    if (next.trim().length < 4) {
+      return t2('New password is too short', 'Furaha cusub aad buu u gaaban yahay');
+    }
+    u.password = next.trim();
+    final i = accounts.indexWhere((a) => a.id == u.id);
+    if (i >= 0) accounts[i].password = next.trim();
+    saveAccounts();
+    return null;
+  }
+
+  // Local i18n helper (store can't import main.dart's t() without a cycle).
+  String t2(String en, String so) => lang == 'so' ? so : en;
+
   void setLang(String l) {
     lang = l == 'so' ? 'so' : 'en';
     _sp.setString('hr_lang', lang);
