@@ -1,0 +1,17 @@
+# Dart / Flutter
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+pubspec.lock
+*.iml
+.idea/
+
+# Generated platform projects — recreated in CI by `flutter create`
+android/
+ios/
+linux/
+macos/
+windows/
+web/
