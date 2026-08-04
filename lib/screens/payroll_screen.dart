@@ -120,7 +120,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                           fontWeight: FontWeight.w800, fontSize: 14)),
                   subtitle: Text(
                       '${t('Base', 'Aasaas')} ${store.money(p.base, p.currency)}'
-                      '${p.allowances > 0 ? ' · +${store.money(p.allowances, p.currency)}' : ''}'
+                      '${p.earnings > 0 ? ' · +${store.money(p.earnings, p.currency)}' : ''}'
                       '${p.deductions > 0 ? ' · -${store.money(p.deductions, p.currency)}' : ''}'),
                   trailing: Text(store.money(p.net, p.currency),
                       style: const TextStyle(
@@ -143,28 +143,51 @@ class _PayslipSheet extends StatefulWidget {
   State<_PayslipSheet> createState() => _PayslipSheetState();
 }
 
+class _Row {
+  final TextEditingController label;
+  final TextEditingController amount;
+  bool deduct;
+  _Row(String l, double a, this.deduct)
+      : label = TextEditingController(text: l),
+        amount = TextEditingController(text: a == 0 ? '' : a.toString());
+  void dispose() {
+    label.dispose();
+    amount.dispose();
+  }
+}
+
 class _PayslipSheetState extends State<_PayslipSheet> {
-  late final TextEditingController _allow, _ded;
+  final List<_Row> _rows = [];
 
   @override
   void initState() {
     super.initState();
-    _allow = TextEditingController(
-        text: widget.slip.allowances == 0 ? '' : widget.slip.allowances.toString());
-    _ded = TextEditingController(
-        text: widget.slip.deductions == 0 ? '' : widget.slip.deductions.toString());
+    for (final it in widget.slip.items) {
+      _rows.add(_Row(it.label, it.amount, it.deduct));
+    }
   }
 
   @override
   void dispose() {
-    _allow.dispose();
-    _ded.dispose();
+    for (final r in _rows) {
+      r.dispose();
+    }
     super.dispose();
   }
 
+  double _amt(_Row r) => double.tryParse(r.amount.text.trim()) ?? 0;
+
+  void _add(String label, bool deduct) {
+    setState(() => _rows.add(_Row(label, 0, deduct)));
+  }
+
   void _save() {
-    widget.slip.allowances = double.tryParse(_allow.text.trim()) ?? 0;
-    widget.slip.deductions = double.tryParse(_ded.text.trim()) ?? 0;
+    widget.slip.items
+      ..clear()
+      ..addAll(_rows
+          .where((r) => r.label.text.trim().isNotEmpty || _amt(r) != 0)
+          .map((r) => PayItem(
+              label: r.label.text.trim(), amount: _amt(r), deduct: r.deduct)));
     store.savePayslips();
     Navigator.pop(context, true);
   }
@@ -178,9 +201,16 @@ class _PayslipSheetState extends State<_PayslipSheet> {
   @override
   Widget build(BuildContext context) {
     final p = widget.slip;
-    final net = (double.tryParse(_allow.text.trim()) ?? 0) -
-        (double.tryParse(_ded.text.trim()) ?? 0) +
-        p.base;
+    var earn = 0.0, ded = 0.0;
+    for (final r in _rows) {
+      if (r.deduct) {
+        ded += _amt(r);
+      } else {
+        earn += _amt(r);
+      }
+    }
+    final net = p.base + earn - ded;
+
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
@@ -210,25 +240,24 @@ class _PayslipSheetState extends State<_PayslipSheet> {
               Text('${t('Payslip', 'Warqad mushahar')} · ${p.month}',
                   style: const TextStyle(fontSize: 12.5, color: Color(0xFF6B7688))),
               const SizedBox(height: 14),
-              Row(children: [
-                Expanded(
-                    child: TextField(
-                        controller: _allow,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        onChanged: (_) => setState(() {}),
-                        decoration: InputDecoration(
-                            labelText: t('Allowances', 'Gunno')))),
-                const SizedBox(width: 10),
-                Expanded(
-                    child: TextField(
-                        controller: _ded,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        onChanged: (_) => setState(() {}),
-                        decoration: InputDecoration(
-                            labelText: t('Deductions', 'Jarid')))),
-              ]),
+
+              // Line items
+              for (int i = 0; i < _rows.length; i++) _itemRow(_rows[i]),
+
+              const SizedBox(height: 4),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _preset(t('+ Earning', '+ Dakhli'), false),
+                  _preset(t('+ Deduction', '+ Jarid'), true),
+                  _chip(t('Overtime', 'Saacado dheeraad'), false),
+                  _chip(t('Bonus', 'Abaalmarin'), false),
+                  _chip(t('Tax', 'Cashuur'), true),
+                  _chip(t('Advance', 'Sulfad'), true),
+                ],
+              ),
+
               Container(
                 margin: const EdgeInsets.only(top: 14),
                 padding: const EdgeInsets.all(14),
@@ -239,10 +268,10 @@ class _PayslipSheetState extends State<_PayslipSheet> {
                 child: Column(children: [
                   _row(t('Base salary', 'Mushahar aasaasi'),
                       store.money(p.base, p.currency)),
-                  _row(t('Allowances', 'Gunno'),
-                      '+ ${store.money(double.tryParse(_allow.text.trim()) ?? 0, p.currency)}'),
+                  _row(t('Earnings', 'Dakhliga'),
+                      '+ ${store.money(earn, p.currency)}'),
                   _row(t('Deductions', 'Jarid'),
-                      '- ${store.money(double.tryParse(_ded.text.trim()) ?? 0, p.currency)}'),
+                      '- ${store.money(ded, p.currency)}'),
                   const Divider(height: 18),
                   _row(t('NET PAY', 'LACAGTA GUUD'),
                       store.money(net, p.currency),
@@ -275,6 +304,85 @@ class _PayslipSheetState extends State<_PayslipSheet> {
       ),
     );
   }
+
+  Widget _itemRow(_Row r) {
+    final green = const Color(0xFF1F9D63), red = const Color(0xFFC62F16);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => setState(() => r.deduct = !r.deduct),
+            child: Container(
+              width: 34,
+              height: 46,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: (r.deduct ? red : green).withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(r.deduct ? Icons.remove : Icons.add,
+                  color: r.deduct ? red : green),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 5,
+            child: TextField(
+              controller: r.label,
+              decoration: InputDecoration(
+                  isDense: true, hintText: t('Label', 'Sumad')),
+            ),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 84,
+            child: TextField(
+              controller: r.amount,
+              textAlign: TextAlign.right,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(isDense: true, hintText: '0'),
+            ),
+          ),
+          IconButton(
+            onPressed: () => setState(() {
+              r.dispose();
+              _rows.remove(r);
+            }),
+            icon: const Icon(Icons.close, size: 18, color: Color(0xFF8B97A8)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _preset(String label, bool deduct) => FilledButton.tonal(
+        onPressed: () => _add('', deduct),
+        style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFFEAEEF4),
+            foregroundColor: kNavy,
+            minimumSize: const Size(0, 38)),
+        child: Text(label, style: const TextStyle(fontSize: 12.5)),
+      );
+
+  Widget _chip(String label, bool deduct) => GestureDetector(
+        onTap: () => _add(label, deduct),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFD8E0EA)),
+          ),
+          child: Text(label,
+              style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF5C6B82))),
+        ),
+      );
 
   Widget _row(String l, String v, {bool big = false}) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 2),

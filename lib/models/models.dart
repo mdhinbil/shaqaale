@@ -105,10 +105,28 @@ class Leave {
   }
 }
 
+/// One line on a payslip: a named earning (deduct=false) or deduction (true).
+class PayItem {
+  String label;
+  double amount;
+  bool deduct;
+  PayItem({required this.label, this.amount = 0, this.deduct = false});
+
+  factory PayItem.fromJson(Map<String, dynamic> j) => PayItem(
+        label: (j['label'] ?? '').toString(),
+        amount: _num(j['amount']),
+        deduct: j['deduct'] == true,
+      );
+
+  Map<String, dynamic> toJson() =>
+      {'label': label, 'amount': amount, 'deduct': deduct};
+}
+
 /// A generated payslip for an employee for a month (yyyy-mm).
 class Payslip {
   String id, empId, empName, month, currency;
-  double base, allowances, deductions;
+  double base;
+  List<PayItem> items;
 
   Payslip({
     required this.id,
@@ -117,28 +135,45 @@ class Payslip {
     required this.month,
     this.currency = 'USD',
     this.base = 0,
-    this.allowances = 0,
-    this.deductions = 0,
-  });
+    List<PayItem>? items,
+  }) : items = items ?? [];
 
-  factory Payslip.fromJson(Map<String, dynamic> j) => Payslip(
-        id: (j['id'] ?? '').toString(),
-        empId: (j['empId'] ?? '').toString(),
-        empName: (j['empName'] ?? '').toString(),
-        month: (j['month'] ?? '').toString(),
-        currency: (j['currency'] ?? 'USD').toString(),
-        base: _num(j['base']),
-        allowances: _num(j['allowances']),
-        deductions: _num(j['deductions']),
-      );
+  factory Payslip.fromJson(Map<String, dynamic> j) {
+    final items = <PayItem>[];
+    final raw = j['items'];
+    if (raw is List) {
+      for (final e in raw) {
+        if (e is Map) items.add(PayItem.fromJson(Map<String, dynamic>.from(e)));
+      }
+    } else {
+      // Migrate the old single allowances/deductions figures into line items.
+      final a = _num(j['allowances']);
+      final d = _num(j['deductions']);
+      if (a != 0) items.add(PayItem(label: 'Allowance', amount: a));
+      if (d != 0) items.add(PayItem(label: 'Deduction', amount: d, deduct: true));
+    }
+    return Payslip(
+      id: (j['id'] ?? '').toString(),
+      empId: (j['empId'] ?? '').toString(),
+      empName: (j['empName'] ?? '').toString(),
+      month: (j['month'] ?? '').toString(),
+      currency: (j['currency'] ?? 'USD').toString(),
+      base: _num(j['base']),
+      items: items,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         'id': id, 'empId': empId, 'empName': empName, 'month': month,
-        'currency': currency, 'base': base, 'allowances': allowances,
-        'deductions': deductions,
+        'currency': currency, 'base': base,
+        'items': items.map((e) => e.toJson()).toList(),
       };
 
-  double get net => base + allowances - deductions;
+  double get earnings =>
+      items.where((i) => !i.deduct).fold(0.0, (a, i) => a + i.amount);
+  double get deductions =>
+      items.where((i) => i.deduct).fold(0.0, (a, i) => a + i.amount);
+  double get net => base + earnings - deductions;
 }
 
 class Account {
