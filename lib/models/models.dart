@@ -6,11 +6,6 @@ double _num(dynamic v) {
   return double.tryParse((v ?? '').toString()) ?? 0;
 }
 
-int _int(dynamic v) {
-  if (v is num) return v.toInt();
-  return int.tryParse((v ?? '').toString()) ?? 0;
-}
-
 class Employee {
   String id, name, phone, email, dept, position, currency, status, hired, gender, note;
   double salary; // base monthly salary, in `currency`
