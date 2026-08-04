@@ -179,6 +179,30 @@ class Store extends ChangeNotifier {
     return null;
   }
 
+  /// Update the signed-in account's display name and login username. Returns
+  /// null on success, or a human-readable reason it failed.
+  String? updateProfile(String name, String username) {
+    final u = user;
+    if (u == null) return 'Not signed in';
+    final un = username.trim();
+    if (un.isEmpty) {
+      return t2('Username cannot be empty', 'Magaca isticmaale ma madhnaan karo');
+    }
+    if (accounts.any(
+        (a) => a.id != u.id && a.username.toLowerCase() == un.toLowerCase())) {
+      return t2('That username is taken', 'Magacaas horey ayaa loo qaatay');
+    }
+    u.name = name.trim().isEmpty ? u.name : name.trim();
+    u.username = un;
+    final i = accounts.indexWhere((a) => a.id == u.id);
+    if (i >= 0) {
+      accounts[i].name = u.name;
+      accounts[i].username = un;
+    }
+    saveAccounts();
+    return null;
+  }
+
   // Local i18n helper (store can't import main.dart's t() without a cycle).
   String t2(String en, String so) => lang == 'so' ? so : en;
 

@@ -42,6 +42,55 @@ class _MoreScreenState extends State<MoreScreen> {
     _say(t('Saved', 'La kaydiyay'));
   }
 
+  Future<void> _editProfile() async {
+    final name = TextEditingController(text: store.user?.name ?? '');
+    final un = TextEditingController(text: store.user?.username ?? '');
+    final action = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(t('Edit profile', 'Wax ka beddel profile')),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+                controller: name,
+                decoration: InputDecoration(labelText: t('Name', 'Magaca'))),
+            const SizedBox(height: 10),
+            TextField(
+                controller: un,
+                decoration: InputDecoration(
+                    labelText: t('Username', 'Magaca isticmaale'))),
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => Navigator.pop(context, 'password'),
+                icon: const Icon(Icons.password_outlined, size: 18),
+                label: Text(t('Change password', 'Beddel furaha')),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, 'cancel'),
+              child: Text(t('Cancel', 'Jooji'))),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, 'save'),
+              child: Text(t('Save', 'Kaydi'))),
+        ],
+      ),
+    );
+    if (action == 'password') {
+      if (mounted) await _changePassword();
+      return;
+    }
+    if (action != 'save') return;
+    final err = store.updateProfile(name.text, un.text);
+    _say(err ?? t('Profile updated', 'Profile-ka waa la cusboonaysiiyay'));
+    if (err == null && mounted) setState(() {});
+  }
+
   Future<void> _changePassword() async {
     final cur = TextEditingController();
     final nw = TextEditingController();
@@ -147,7 +196,10 @@ class _MoreScreenState extends State<MoreScreen> {
                   child: Icon(Icons.person, color: Colors.white)),
               title: Text(store.user?.name ?? 'Admin',
                   style: const TextStyle(fontWeight: FontWeight.w800)),
-              subtitle: Text(store.user?.role ?? 'admin'),
+              subtitle: Text(
+                  '@${store.user?.username ?? 'admin'} · ${store.user?.role ?? 'admin'}'),
+              trailing: const Icon(Icons.edit_outlined, color: kBlue),
+              onTap: _editProfile,
             ),
           ),
           _label(t('Cloud sync', 'Isku xirka cloud')),
