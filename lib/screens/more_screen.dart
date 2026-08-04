@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../main.dart';
 import 'cloud_section.dart';
 import 'leaves_screen.dart';
+import 'reports_screen.dart';
 
 class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key});
@@ -111,6 +112,18 @@ class _MoreScreenState extends State<MoreScreen> {
                 const SizedBox(width: 8),
                 _langBtn('Soomaali', 'so'),
               ]),
+            ),
+          ),
+          _label(t('Reports', 'Warbixinno')),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.bar_chart, color: kBlue),
+              title: Text(t('Reports & export', 'Warbixinno & soo saarid')),
+              subtitle: Text(t('Payroll, attendance, staff list',
+                  'Mushahar, xaadiris, liiska shaqaalaha')),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ReportsScreen())),
             ),
           ),
           _label(t('Leave', 'Fasax')),
