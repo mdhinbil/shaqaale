@@ -129,6 +129,7 @@ class _EmployeeSheet extends StatefulWidget {
 
 class _EmployeeSheetState extends State<_EmployeeSheet> {
   late final TextEditingController _n, _pos, _phone, _email, _sal, _hired, _note;
+  late final TextEditingController _un, _pw;
   late String _dept, _currency, _status;
 
   @override
@@ -142,6 +143,8 @@ class _EmployeeSheetState extends State<_EmployeeSheet> {
     _sal = TextEditingController(text: e == null ? '' : e.salary.toString());
     _hired = TextEditingController(text: e?.hired ?? '');
     _note = TextEditingController(text: e?.note ?? '');
+    _un = TextEditingController(text: e?.username ?? '');
+    _pw = TextEditingController(text: e?.password ?? '');
     _dept = e?.dept.isNotEmpty == true ? e!.dept : (store.departments.isNotEmpty ? store.departments.first : '');
     _currency = e?.currency ?? 'USD';
     _status = e?.status ?? 'active';
@@ -149,7 +152,7 @@ class _EmployeeSheetState extends State<_EmployeeSheet> {
 
   @override
   void dispose() {
-    for (final c in [_n, _pos, _phone, _email, _sal, _hired, _note]) {
+    for (final c in [_n, _pos, _phone, _email, _sal, _hired, _note, _un, _pw]) {
       c.dispose();
     }
     super.dispose();
@@ -171,6 +174,8 @@ class _EmployeeSheetState extends State<_EmployeeSheet> {
       e.salary = salary;
       e.hired = _hired.text.trim();
       e.note = _note.text.trim();
+      e.username = _un.text.trim();
+      e.password = _pw.text;
     } else {
       store.employees.add(Employee(
         id: 'e${DateTime.now().millisecondsSinceEpoch}',
@@ -184,6 +189,8 @@ class _EmployeeSheetState extends State<_EmployeeSheet> {
         salary: salary,
         hired: _hired.text.trim(),
         note: _note.text.trim(),
+        username: _un.text.trim(),
+        password: _pw.text,
       ));
     }
     store.saveEmployees();
@@ -346,6 +353,31 @@ class _EmployeeSheetState extends State<_EmployeeSheet> {
                   controller: _note,
                   maxLines: 2,
                   decoration: InputDecoration(labelText: t('Note', 'Qoraal'))),
+              const SizedBox(height: 16),
+              Text(t('Staff login (optional)', 'Gelitaanka shaqaalaha (ikhtiyaari)'),
+                  style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF6B7688))),
+              const SizedBox(height: 2),
+              Text(
+                  t('Give the staff member a username & password to sign in and edit their own profile.',
+                      'Sii shaqaalaha magac & furaha si uu u galo oo u beddelo profile-kiisa.'),
+                  style: const TextStyle(fontSize: 11.5, color: Color(0xFF98A2B3))),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(
+                    child: TextField(
+                        controller: _un,
+                        decoration: InputDecoration(
+                            labelText: t('Username', 'Magaca isticmaale')))),
+                const SizedBox(width: 10),
+                Expanded(
+                    child: TextField(
+                        controller: _pw,
+                        decoration: InputDecoration(
+                            labelText: t('Password', 'Furaha')))),
+              ]),
               const SizedBox(height: 16),
               Row(children: [
                 if (widget.existing != null)

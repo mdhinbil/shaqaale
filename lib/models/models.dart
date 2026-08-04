@@ -8,6 +8,7 @@ double _num(dynamic v) {
 
 class Employee {
   String id, name, phone, email, dept, position, currency, status, hired, gender, note;
+  String username, password; // optional self-service login
   double salary; // base monthly salary, in `currency`
 
   Employee({
@@ -22,6 +23,8 @@ class Employee {
     this.hired = '',
     this.gender = '',
     this.note = '',
+    this.username = '',
+    this.password = '',
     this.salary = 0,
   });
 
@@ -37,13 +40,16 @@ class Employee {
         hired: (j['hired'] ?? '').toString(),
         gender: (j['gender'] ?? '').toString(),
         note: (j['note'] ?? '').toString(),
+        username: (j['username'] ?? '').toString(),
+        password: (j['password'] ?? '').toString(),
         salary: _num(j['salary']),
       );
 
   Map<String, dynamic> toJson() => {
         'id': id, 'name': name, 'phone': phone, 'email': email, 'dept': dept,
         'position': position, 'currency': currency, 'status': status,
-        'hired': hired, 'gender': gender, 'note': note, 'salary': salary,
+        'hired': hired, 'gender': gender, 'note': note,
+        'username': username, 'password': password, 'salary': salary,
       };
 
   bool get active => status == 'active';

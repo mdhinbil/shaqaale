@@ -26,6 +26,7 @@ class Store extends ChangeNotifier {
   List<String> departments = [];
 
   Account? user;
+  String staffEmpId = ''; // set when a staff member (not an admin) is signed in
 
   // Settings
   String company = 'My Company';
@@ -145,10 +146,28 @@ class Store extends ChangeNotifier {
 
   // ── auth ──────────────────────────────────────────────
   bool signIn(String username, String password) {
+    final u = username.toLowerCase().trim();
     for (final a in accounts) {
-      if (a.username.toLowerCase() == username.toLowerCase().trim() &&
-          a.password == password) {
+      if (a.username.toLowerCase() == u && a.password == password) {
         user = a;
+        staffEmpId = '';
+        notifyListeners();
+        return true;
+      }
+    }
+    // Staff self-service login: an active employee with matching credentials.
+    for (final e in employees) {
+      if (e.active &&
+          e.username.isNotEmpty &&
+          e.username.toLowerCase() == u &&
+          e.password == password) {
+        user = Account(
+            id: 'emp_${e.id}',
+            name: e.name,
+            username: e.username,
+            password: e.password,
+            role: 'staff');
+        staffEmpId = e.id;
         notifyListeners();
         return true;
       }
@@ -156,8 +175,12 @@ class Store extends ChangeNotifier {
     return false;
   }
 
+  bool get isStaff => user?.role == 'staff';
+  Employee? get staffEmp => empById(staffEmpId);
+
   void signOut() {
     user = null;
+    staffEmpId = '';
     notifyListeners();
   }
 
@@ -166,16 +189,38 @@ class Store extends ChangeNotifier {
   String? changePassword(String current, String next) {
     final u = user;
     if (u == null) return 'Not signed in';
-    if (u.password != current) {
-      return t2('Current password is wrong', 'Furaha hadda waa khalad');
+    final wrong = t2('Current password is wrong', 'Furaha hadda waa khalad');
+    final short =
+        t2('New password is too short', 'Furaha cusub aad buu u gaaban yahay');
+    // Staff change the password on their own employee record.
+    if (isStaff) {
+      final e = staffEmp;
+      if (e == null) return 'No profile';
+      if (e.password != current) return wrong;
+      if (next.trim().length < 4) return short;
+      e.password = next.trim();
+      u.password = next.trim();
+      saveEmployees();
+      return null;
     }
-    if (next.trim().length < 4) {
-      return t2('New password is too short', 'Furaha cusub aad buu u gaaban yahay');
-    }
+    if (u.password != current) return wrong;
+    if (next.trim().length < 4) return short;
     u.password = next.trim();
     final i = accounts.indexWhere((a) => a.id == u.id);
     if (i >= 0) accounts[i].password = next.trim();
     saveAccounts();
+    return null;
+  }
+
+  /// A staff member edits their own contact details.
+  String? updateMyProfile(String name, String phone, String email) {
+    final e = staffEmp;
+    if (e == null) return 'No profile';
+    if (name.trim().isNotEmpty) e.name = name.trim();
+    e.phone = phone.trim();
+    e.email = email.trim();
+    user?.name = e.name;
+    saveEmployees();
     return null;
   }
 

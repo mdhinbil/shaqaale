@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'data/store.dart';
 import 'screens/login_screen.dart';
+import 'screens/staff_home.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/employees_screen.dart';
 import 'screens/attendance_screen.dart';
@@ -103,7 +104,9 @@ class _RootGateState extends State<RootGate> {
 
   @override
   Widget build(BuildContext context) {
-    return store.user == null ? const LoginScreen() : const HomeShell();
+    if (store.user == null) return const LoginScreen();
+    if (store.isStaff) return const StaffHome(); // limited self-service view
+    return const HomeShell();
   }
 }
 
