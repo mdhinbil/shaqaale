@@ -8,8 +8,14 @@ class AttendanceScreen extends StatefulWidget {
 }
 
 class _AttendanceScreenState extends State<AttendanceScreen> {
-  // status -> (label, color)
   static const _opts = ['present', 'late', 'leave', 'absent'];
+  late String _date; // yyyy-mm-dd being viewed/edited
+
+  @override
+  void initState() {
+    super.initState();
+    _date = store.today();
+  }
 
   String _label(String s) => switch (s) {
         'present' => t('Present', 'Jooga'),
@@ -25,13 +31,29 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         _ => const Color(0xFFD63B3B),
       };
 
+  void _shift(int days) {
+    setState(() =>
+        _date = store.fmtDate(store.parseDate(_date).add(Duration(days: days))));
+  }
+
+  Future<void> _pick() async {
+    final d = await showDatePicker(
+      context: context,
+      initialDate: store.parseDate(_date),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (d != null) setState(() => _date = store.fmtDate(d));
+  }
+
   @override
   Widget build(BuildContext context) {
     final staff = store.employees.where((e) => e.active).toList()
       ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-    final d = store.today();
-    final present = staff.where((e) => store.todayStatus(e.id) == 'present').length;
-    final marked = staff.where((e) => store.todayStatus(e.id) != null).length;
+    final isToday = _date == store.today();
+    final present =
+        staff.where((e) => store.statusOn(e.id, _date) == 'present').length;
+    final marked = staff.where((e) => store.statusOn(e.id, _date) != null).length;
 
     return Scaffold(
       appBar: AppBar(title: Text(t('Attendance', 'Xaadiris'))),
@@ -44,47 +66,70 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               children: [
                 Card(
                   child: Padding(
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.fromLTRB(6, 6, 14, 6),
                     child: Row(
                       children: [
+                        IconButton(
+                            onPressed: () => _shift(-1),
+                            icon: const Icon(Icons.chevron_left)),
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(t('Today', 'Maanta'),
-                                  style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w800,
-                                      color: Color(0xFF6B7688))),
-                              const SizedBox(height: 2),
-                              Text(d,
-                                  style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w800,
-                                      color: kNavy)),
-                            ],
+                          child: GestureDetector(
+                            onTap: _pick,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(children: [
+                                  Text(
+                                      isToday
+                                          ? t('Today', 'Maanta')
+                                          : t('Date', 'Taariikh'),
+                                      style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w800,
+                                          color: Color(0xFF6B7688))),
+                                  const SizedBox(width: 6),
+                                  const Icon(Icons.calendar_today,
+                                      size: 13, color: Color(0xFF8B97A8)),
+                                ]),
+                                const SizedBox(height: 2),
+                                Text(_date,
+                                    style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800,
+                                        color: kNavy)),
+                              ],
+                            ),
                           ),
                         ),
                         Text('$present / ${staff.length}',
                             style: const TextStyle(
-                                fontSize: 22,
+                                fontSize: 20,
                                 fontWeight: FontWeight.w800,
                                 color: kGreen)),
-                        const SizedBox(width: 6),
-                        Text(t('present', 'jooga'),
-                            style: const TextStyle(
-                                fontSize: 12, color: Color(0xFF6B7688))),
+                        IconButton(
+                            onPressed: () => _shift(1),
+                            icon: const Icon(Icons.chevron_right)),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 6),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(2, 8, 2, 8),
-                  child: Text(
-                      '${t('Marked', 'La calaamadeeyay')}: $marked / ${staff.length}',
-                      style: const TextStyle(
-                          fontSize: 12, color: Color(0xFF8B97A8))),
+                  padding: const EdgeInsets.fromLTRB(4, 8, 4, 4),
+                  child: Row(
+                    children: [
+                      Text(
+                          '${t('Marked', 'La calaamadeeyay')}: $marked / ${staff.length}',
+                          style: const TextStyle(
+                              fontSize: 12, color: Color(0xFF8B97A8))),
+                      const Spacer(),
+                      if (!isToday)
+                        TextButton(
+                          onPressed: () =>
+                              setState(() => _date = store.today()),
+                          child: Text(t('Go to today', 'U gudub maanta')),
+                        ),
+                    ],
+                  ),
                 ),
                 for (final e in staff)
                   Card(
@@ -100,19 +145,20 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                   style: const TextStyle(
                                       fontWeight: FontWeight.w800, fontSize: 14)),
                             ),
-                            if (store.todayStatus(e.id) != null)
+                            if (store.statusOn(e.id, _date) != null)
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 8, vertical: 3),
                                 decoration: BoxDecoration(
-                                    color: _color(store.todayStatus(e.id)!)
+                                    color: _color(store.statusOn(e.id, _date)!)
                                         .withValues(alpha: .12),
                                     borderRadius: BorderRadius.circular(20)),
-                                child: Text(_label(store.todayStatus(e.id)!),
+                                child: Text(_label(store.statusOn(e.id, _date)!),
                                     style: TextStyle(
                                         fontSize: 10.5,
                                         fontWeight: FontWeight.w800,
-                                        color: _color(store.todayStatus(e.id)!))),
+                                        color:
+                                            _color(store.statusOn(e.id, _date)!))),
                               ),
                           ]),
                           const SizedBox(height: 8),
@@ -125,9 +171,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                     child: _MarkBtn(
                                       label: _label(s),
                                       color: _color(s),
-                                      on: store.todayStatus(e.id) == s,
+                                      on: store.statusOn(e.id, _date) == s,
                                       onTap: () {
-                                        store.mark(e.id, s);
+                                        store.markOn(e.id, _date, s);
                                         setState(() {});
                                       },
                                     ),
@@ -165,7 +211,8 @@ class _MarkBtn extends StatelessWidget {
         decoration: BoxDecoration(
           color: on ? color : Colors.white,
           borderRadius: BorderRadius.circular(9),
-          border: Border.all(color: on ? color : const Color(0xFFE3E8EF), width: 1.5),
+          border:
+              Border.all(color: on ? color : const Color(0xFFE3E8EF), width: 1.5),
         ),
         child: Text(label,
             maxLines: 1,

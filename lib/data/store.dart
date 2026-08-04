@@ -228,29 +228,33 @@ class Store extends ChangeNotifier {
 
   String _2(int n) => n.toString().padLeft(2, '0');
 
-  /// Attendance status for an employee today, or null if unmarked.
-  String? todayStatus(String empId) {
-    final d = today();
+  /// Attendance status for an employee on a given day (yyyy-mm-dd), or null.
+  String? statusOn(String empId, String date) {
     for (final a in attendance) {
-      if (a.empId == empId && a.date == d) return a.status;
+      if (a.empId == empId && a.date == date) return a.status;
     }
     return null;
   }
 
-  void mark(String empId, String status) {
-    final d = today();
-    final i = attendance.indexWhere((a) => a.empId == empId && a.date == d);
+  void markOn(String empId, String date, String status) {
+    final i = attendance.indexWhere((a) => a.empId == empId && a.date == date);
     if (i >= 0) {
       attendance[i].status = status;
     } else {
       attendance.add(Attendance(
           id: 'at${DateTime.now().microsecondsSinceEpoch}',
           empId: empId,
-          date: d,
+          date: date,
           status: status));
     }
     saveAttendance();
   }
+
+  String? todayStatus(String empId) => statusOn(empId, today());
+  void mark(String empId, String status) => markOn(empId, today(), status);
+
+  String fmtDate(DateTime n) => '${n.year}-${_2(n.month)}-${_2(n.day)}';
+  DateTime parseDate(String s) => DateTime.tryParse(s) ?? DateTime.now();
 
   /// Format an amount held in [cur] into a readable string in that currency.
   String money(double amount, [String? cur]) {
