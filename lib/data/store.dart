@@ -178,6 +178,22 @@ class Store extends ChangeNotifier {
   bool get isStaff => user?.role == 'staff';
   Employee? get staffEmp => empById(staffEmpId);
 
+  /// Open an admin session after signing in with the cloud account (front-door
+  /// cloud login). The synthetic user just lets the app open; data comes from
+  /// the cloud pull the caller runs.
+  void openCloudAdmin(String email) {
+    user = Account(
+      id: 'cloud_admin',
+      name: email.contains('@') ? email.split('@').first : email,
+      username: email,
+      password: '',
+      role: 'admin',
+    );
+    staffEmpId = '';
+    _ensureDefaults();
+    notifyListeners();
+  }
+
   void signOut() {
     user = null;
     staffEmpId = '';

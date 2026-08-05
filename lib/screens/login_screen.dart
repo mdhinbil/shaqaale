@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
+import '../data/cloud.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -10,7 +11,8 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _u = TextEditingController();
   final _p = TextEditingController();
-  bool _err = false, _hide = true;
+  bool _err = false, _hide = true, _busy = false;
+  String _errMsg = '';
 
   @override
   void dispose() {
@@ -19,8 +21,48 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _go() {
-    if (!store.signIn(_u.text, _p.text)) setState(() => _err = true);
+  Future<void> _go() async {
+    final u = _u.text.trim();
+    final p = _p.text;
+    // 1) Local admin / staff account.
+    if (store.signIn(u, p)) return;
+    // 2) Cloud account (email) — sign in to Firebase, then open the app.
+    if (u.contains('@')) {
+      setState(() {
+        _busy = true;
+        _err = false;
+        _errMsg = '';
+      });
+      try {
+        final remote = await cloud.signIn(u, p);
+        if (remote.has) {
+          await store.adoptCloudData(); // this account already has cloud data
+        } else {
+          await store.uploadLocalData(); // first sign-in: seed the cloud
+        }
+        store.openCloudAdmin(u);
+        return; // RootGate switches to the app
+      } catch (e) {
+        // Auth succeeded but reading data failed (e.g. Firestore rules not set
+        // up yet): let the admin in anyway — sync retries from Settings.
+        if (cloud.on) {
+          store.openCloudAdmin(u);
+          return;
+        }
+        if (mounted) {
+          setState(() {
+            _busy = false;
+            _err = true;
+            _errMsg = Cloud.errText(e);
+          });
+        }
+        return;
+      }
+    }
+    setState(() {
+      _err = true;
+      _errMsg = '';
+    });
   }
 
   Widget _lang(String label, String code) {
@@ -102,8 +144,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               border: Border.all(color: const Color(0xFFFFB3B3)),
                               borderRadius: BorderRadius.circular(9)),
                           child: Text(
-                              t('Wrong username or password',
-                                  'Magaca ama furaha waa khalad'),
+                              _errMsg.isNotEmpty
+                                  ? _errMsg
+                                  : t('Wrong username or password',
+                                      'Magaca ama furaha waa khalad'),
                               style: const TextStyle(
                                   color: Color(0xFFBF2600), fontSize: 12.5)),
                         ),
@@ -133,11 +177,20 @@ class _LoginScreenState extends State<LoginScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton(
-                            onPressed: _go, child: Text(t('Sign in', 'Gal'))),
+                            onPressed: _busy ? null : _go,
+                            child: _busy
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2, color: Colors.white))
+                                : Text(t('Sign in', 'Gal'))),
                       ),
                       const SizedBox(height: 12),
-                      Text(t('Default:  admin / admin123',
-                          'Default:  admin / admin123'),
+                      Text(
+                          t('Admin: admin / admin123  ·  or your cloud email',
+                              'Admin: admin / admin123  ·  ama iimaylkaaga cloud'),
+                          textAlign: TextAlign.center,
                           style: const TextStyle(
                               fontSize: 11.5, color: Color(0xFF98A2B3))),
                     ],
