@@ -14,6 +14,9 @@ dependencies:
   # layered on later over Firebase REST, exactly like the other MareegTech apps.
   shared_preferences: ^2.2.3
   http: ^1.2.1
+  # Profile photos (camera or gallery). Stored compressed + base64 on the
+  # employee record so they sync with everything else.
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:

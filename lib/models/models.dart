@@ -9,6 +9,7 @@ double _num(dynamic v) {
 class Employee {
   String id, name, phone, email, dept, position, currency, status, hired, gender, note;
   String username, password; // optional self-service login
+  String photo; // base64-encoded profile photo (compressed), or ''
   double salary; // base monthly salary, in `currency`
 
   Employee({
@@ -25,6 +26,7 @@ class Employee {
     this.note = '',
     this.username = '',
     this.password = '',
+    this.photo = '',
     this.salary = 0,
   });
 
@@ -42,6 +44,7 @@ class Employee {
         note: (j['note'] ?? '').toString(),
         username: (j['username'] ?? '').toString(),
         password: (j['password'] ?? '').toString(),
+        photo: (j['photo'] ?? '').toString(),
         salary: _num(j['salary']),
       );
 
@@ -49,7 +52,8 @@ class Employee {
         'id': id, 'name': name, 'phone': phone, 'email': email, 'dept': dept,
         'position': position, 'currency': currency, 'status': status,
         'hired': hired, 'gender': gender, 'note': note,
-        'username': username, 'password': password, 'salary': salary,
+        'username': username, 'password': password, 'photo': photo,
+        'salary': salary,
       };
 
   bool get active => status == 'active';

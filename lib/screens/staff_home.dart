@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
 import '../models/models.dart';
+import '../photo_util.dart';
 
 /// What a signed-in staff member (not an admin) sees: their own profile, which
 /// they can edit, their password, and read-only payslips and attendance.
@@ -14,6 +15,16 @@ class _StaffHomeState extends State<StaffHome> {
   void _say(String m) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  }
+
+  Future<void> _changePhoto() async {
+    final e = store.staffEmp;
+    if (e == null) return;
+    final r = await choosePhoto(context, hasPhoto: e.photo.isNotEmpty);
+    if (r == null) return;
+    e.photo = r;
+    store.saveEmployees();
+    if (mounted) setState(() {});
   }
 
   Future<void> _editProfile() async {
@@ -212,12 +223,21 @@ class _StaffHomeState extends State<StaffHome> {
               children: [
                 Card(
                   child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: kBlue,
-                      child: Text(
-                          e.name.isNotEmpty ? e.name[0].toUpperCase() : '?',
-                          style: const TextStyle(
-                              color: Colors.white, fontWeight: FontWeight.w800)),
+                    leading: GestureDetector(
+                      onTap: _changePhoto,
+                      child: Stack(
+                        alignment: Alignment.bottomRight,
+                        children: [
+                          photoAvatar(e.photo, e.name),
+                          Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: const BoxDecoration(
+                                color: kBlue, shape: BoxShape.circle),
+                            child: const Icon(Icons.photo_camera,
+                                color: Colors.white, size: 10),
+                          ),
+                        ],
+                      ),
                     ),
                     title: Text(e.name,
                         style: const TextStyle(fontWeight: FontWeight.w800)),

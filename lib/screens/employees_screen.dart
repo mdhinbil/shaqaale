@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
 import '../models/models.dart';
+import '../photo_util.dart';
 
 class EmployeesScreen extends StatefulWidget {
   const EmployeesScreen({super.key});
@@ -74,13 +75,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                       return Card(
                         margin: const EdgeInsets.only(bottom: 8),
                         child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: const Color(0xFFEAF2FF),
-                            child: Text(
-                                e.name.isNotEmpty ? e.name[0].toUpperCase() : '?',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w800, color: kBlue)),
-                          ),
+                          leading: photoAvatar(e.photo, e.name),
                           title: Text(e.name,
                               style: const TextStyle(
                                   fontWeight: FontWeight.w800, fontSize: 14)),
@@ -131,6 +126,7 @@ class _EmployeeSheetState extends State<_EmployeeSheet> {
   late final TextEditingController _n, _pos, _phone, _email, _sal, _hired, _note;
   late final TextEditingController _un, _pw;
   late String _dept, _currency, _status;
+  String _photo = '';
 
   @override
   void initState() {
@@ -148,6 +144,7 @@ class _EmployeeSheetState extends State<_EmployeeSheet> {
     _dept = e?.dept.isNotEmpty == true ? e!.dept : (store.departments.isNotEmpty ? store.departments.first : '');
     _currency = e?.currency ?? 'USD';
     _status = e?.status ?? 'active';
+    _photo = e?.photo ?? '';
   }
 
   @override
@@ -176,6 +173,7 @@ class _EmployeeSheetState extends State<_EmployeeSheet> {
       e.note = _note.text.trim();
       e.username = _un.text.trim();
       e.password = _pw.text;
+      e.photo = _photo;
     } else {
       store.employees.add(Employee(
         id: 'e${DateTime.now().millisecondsSinceEpoch}',
@@ -191,6 +189,7 @@ class _EmployeeSheetState extends State<_EmployeeSheet> {
         note: _note.text.trim(),
         username: _un.text.trim(),
         password: _pw.text,
+        photo: _photo,
       ));
     }
     store.saveEmployees();
@@ -274,6 +273,29 @@ class _EmployeeSheetState extends State<_EmployeeSheet> {
                       : t('Edit staff', 'Wax ka beddel shaqaale'),
                   style: const TextStyle(
                       fontSize: 18, fontWeight: FontWeight.w800, color: kNavy)),
+              const SizedBox(height: 14),
+              Center(
+                child: GestureDetector(
+                  onTap: () async {
+                    final r = await choosePhoto(context,
+                        hasPhoto: _photo.isNotEmpty);
+                    if (r != null) setState(() => _photo = r);
+                  },
+                  child: Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      photoAvatar(_photo, _n.text, radius: 40),
+                      Container(
+                        padding: const EdgeInsets.all(5),
+                        decoration: const BoxDecoration(
+                            color: kBlue, shape: BoxShape.circle),
+                        child: const Icon(Icons.photo_camera,
+                            color: Colors.white, size: 15),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 14),
               TextField(
                   controller: _n,
