@@ -228,7 +228,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ? t('Create account', 'Samee akoon')
                                     : t('Sign in', 'Gal'))),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 16),
+                      const Text('Powered by MareegTech Solutions',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF98A2B3))),
                     ],
                   ),
                 ),
