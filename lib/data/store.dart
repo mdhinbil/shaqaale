@@ -131,6 +131,22 @@ class Store extends ChangeNotifier {
 
   Future<void> uploadLocalData() async => cloud.pushAll();
 
+  /// A brand-new company account starts empty — clear any records left on this
+  /// device (e.g. from testing), keep default departments, then seed the cloud.
+  Future<void> startNewCompany() async {
+    employees = [];
+    attendance = [];
+    leaves = [];
+    payslips = [];
+    company = 'My Company';
+    saveEmployees();
+    saveAttendance();
+    saveLeaves();
+    savePayslips();
+    saveSettings();
+    await cloud.pushAll();
+  }
+
   void _ensureDefaults() {
     if (accounts.isEmpty) {
       accounts = [

@@ -11,7 +11,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _u = TextEditingController();
   final _p = TextEditingController();
-  bool _err = false, _hide = true, _busy = false;
+  bool _err = false, _hide = true, _busy = false, _isNew = false;
   String _errMsg = '';
 
   @override
@@ -24,9 +24,9 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _go() async {
     final u = _u.text.trim();
     final p = _p.text;
-    // 1) Local admin / staff account.
-    if (store.signIn(u, p)) return;
-    // 2) Cloud account (email) — sign in to Firebase, then open the app.
+    // 1) Local admin / staff account (skip when creating a new cloud company).
+    if (!_isNew && store.signIn(u, p)) return;
+    // 2) Cloud company account (email) — sign in or create, then open the app.
     if (u.contains('@')) {
       setState(() {
         _busy = true;
@@ -34,11 +34,13 @@ class _LoginScreenState extends State<LoginScreen> {
         _errMsg = '';
       });
       try {
-        final remote = await cloud.signIn(u, p);
-        if (remote.has) {
-          await store.adoptCloudData(); // this account already has cloud data
+        final remote = await cloud.signIn(u, p, isNew: _isNew);
+        if (_isNew) {
+          await store.startNewCompany(); // clean slate for the new company
+        } else if (remote.has) {
+          await store.adoptCloudData(); // existing company: pull its cloud data
         } else {
-          await store.uploadLocalData(); // first sign-in: seed the cloud
+          await store.uploadLocalData(); // existing account, no cloud data yet
         }
         store.openCloudAdmin(u);
         return; // RootGate switches to the app
@@ -173,7 +175,23 @@ class _LoginScreenState extends State<LoginScreen> {
                               onPressed: () => setState(() => _hide = !_hide)),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 4),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        title: Text(
+                            t('Create a company account', 'Samee akoon shirkad'),
+                            style: const TextStyle(fontSize: 13)),
+                        value: _isNew,
+                        onChanged: _busy
+                            ? null
+                            : (v) => setState(() {
+                                  _isNew = v;
+                                  _err = false;
+                                  _errMsg = '';
+                                }),
+                      ),
+                      const SizedBox(height: 10),
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton(
@@ -184,7 +202,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                     height: 20,
                                     child: CircularProgressIndicator(
                                         strokeWidth: 2, color: Colors.white))
-                                : Text(t('Sign in', 'Gal'))),
+                                : Text(_isNew
+                                    ? t('Create account', 'Samee akoon')
+                                    : t('Sign in', 'Gal'))),
                       ),
                       const SizedBox(height: 12),
                       Text(
