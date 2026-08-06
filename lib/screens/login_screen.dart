@@ -228,13 +228,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ? t('Create account', 'Samee akoon')
                                     : t('Sign in', 'Gal'))),
                       ),
-                      const SizedBox(height: 12),
-                      Text(
-                          t('Admin: admin / admin123  ·  or your cloud email',
-                              'Admin: admin / admin123  ·  ama iimaylkaaga cloud'),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                              fontSize: 11.5, color: Color(0xFF98A2B3))),
+                      const SizedBox(height: 4),
                     ],
                   ),
                 ),
