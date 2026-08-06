@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'data/store.dart';
+import 'data/cloud.dart';
 import 'screens/login_screen.dart';
 import 'screens/staff_home.dart';
+import 'screens/pending_screen.dart';
+import 'screens/companies_admin_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/employees_screen.dart';
 import 'screens/attendance_screen.dart';
@@ -90,11 +93,13 @@ class _RootGateState extends State<RootGate> {
   void initState() {
     super.initState();
     store.addListener(_onChange);
+    cloud.addListener(_onChange); // approval state drives which screen shows
   }
 
   @override
   void dispose() {
     store.removeListener(_onChange);
+    cloud.removeListener(_onChange);
     super.dispose();
   }
 
@@ -105,7 +110,12 @@ class _RootGateState extends State<RootGate> {
   @override
   Widget build(BuildContext context) {
     if (store.user == null) return const LoginScreen();
-    if (store.isStaff) return const StaffHome(); // limited self-service view
+    // MareegTech master account manages approvals instead of running HR.
+    if (cloud.master) return const CompaniesAdminScreen(isHome: true);
+    // Staff self-service (local employee login) is never cloud-gated.
+    if (store.isStaff) return const StaffHome();
+    // A company registered but not yet approved can't use the app.
+    if (cloud.appBlocked) return const PendingScreen();
     return const HomeShell();
   }
 }

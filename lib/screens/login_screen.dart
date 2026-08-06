@@ -11,6 +11,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _u = TextEditingController();
   final _p = TextEditingController();
+  final _company = TextEditingController();
   bool _err = false, _hide = true, _busy = false, _isNew = false;
   String _errMsg = '';
 
@@ -18,6 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _u.dispose();
     _p.dispose();
+    _company.dispose();
     super.dispose();
   }
 
@@ -35,15 +37,23 @@ class _LoginScreenState extends State<LoginScreen> {
       });
       try {
         final remote = await cloud.signIn(u, p, isNew: _isNew);
+        // The master account manages approvals; no company data / gating.
+        if (cloud.master) {
+          store.openCloudAdmin(u);
+          return; // RootGate shows the Companies console
+        }
         if (_isNew) {
-          await store.startNewCompany(); // clean slate for the new company
+          final name = _company.text.trim();
+          await store.startNewCompany(name); // clean slate for the new company
+          await cloud.registerWorkspace(name.isEmpty ? u : name); // pending approval
         } else if (remote.has) {
           await store.adoptCloudData(); // existing company: pull its cloud data
         } else {
           await store.uploadLocalData(); // existing account, no cloud data yet
         }
+        await cloud.refreshWorkspace();
         store.openCloudAdmin(u);
-        return; // RootGate switches to the app
+        return; // RootGate → app, or the pending screen if not yet approved
       } catch (e) {
         // Auth succeeded but reading data failed (e.g. Firestore rules not set
         // up yet): let the admin in anyway — sync retries from Settings.
@@ -153,11 +163,23 @@ class _LoginScreenState extends State<LoginScreen> {
                               style: const TextStyle(
                                   color: Color(0xFFBF2600), fontSize: 12.5)),
                         ),
+                      if (_isNew) ...[
+                        TextField(
+                          controller: _company,
+                          textCapitalization: TextCapitalization.words,
+                          decoration: InputDecoration(
+                              labelText: t('Company name', 'Magaca shirkadda'),
+                              prefixIcon: const Icon(Icons.business_outlined)),
+                        ),
+                        const SizedBox(height: 11),
+                      ],
                       TextField(
                         controller: _u,
                         textInputAction: TextInputAction.next,
                         decoration: InputDecoration(
-                            labelText: t('Username', 'Magaca isticmaale'),
+                            labelText: _isNew
+                                ? t('Company email', 'Iimaylka shirkadda')
+                                : t('Username', 'Magaca isticmaale'),
                             prefixIcon: const Icon(Icons.person_outline)),
                       ),
                       const SizedBox(height: 11),

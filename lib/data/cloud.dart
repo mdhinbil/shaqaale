@@ -20,6 +20,10 @@ const _apiKey = 'AIzaSyCEZxp9W7_h2Nu1qs_wiQdrbXARVb5yvg8';
 const _projectId = 'isguul-togdheer';
 const _root = 'shaqaale';
 
+/// The MareegTech super-admin. Signs in through the normal login and gets the
+/// Companies approval console instead of the HR app.
+const kMasterEmail = 'admin@mareegtech.com';
+
 const cloudKeys = [
   'hr_employees', 'hr_attendance', 'hr_leaves', 'hr_payslips',
   'hr_departments', 'hr_settings', 'hr_accounts',
@@ -29,6 +33,20 @@ class SyncInfo {
   final bool has;
   final int employees, payslips;
   const SyncInfo({this.has = false, this.employees = 0, this.payslips = 0});
+}
+
+/// A company row in the approval registry.
+class Workspace {
+  final String uid, email, name;
+  final bool approved;
+  final int createdAt;
+  const Workspace({
+    required this.uid,
+    this.email = '',
+    this.name = '',
+    this.approved = false,
+    this.createdAt = 0,
+  });
 }
 
 class Cloud extends ChangeNotifier {
@@ -44,6 +62,17 @@ class Cloud extends ChangeNotifier {
   int lastSync = 0;
   String lastError = '';
   String status = 'off'; // off | sync | ok | err
+
+  // Cached approval state, persisted so an offline device still gates correctly.
+  bool wsRegistered = false;
+  bool wsApproved = false;
+  String wsName = '';
+
+  bool get master =>
+      on && email.trim().toLowerCase() == kMasterEmail.trim().toLowerCase();
+
+  /// The HR app is blocked while a company is registered but not yet approved.
+  bool get appBlocked => on && !master && wsRegistered && !wsApproved;
 
   final Map<String, bool> _pending = {};
   Timer? _timer;
@@ -63,6 +92,9 @@ class Cloud extends ChangeNotifier {
         uid = (s['uid'] ?? '').toString();
         _refreshToken = (s['refreshToken'] ?? '').toString();
         lastSync = (s['lastSync'] as num?)?.toInt() ?? 0;
+        wsRegistered = s['wsRegistered'] == true;
+        wsApproved = s['wsApproved'] == true;
+        wsName = (s['wsName'] ?? '').toString();
       }
     } catch (_) {}
   }
@@ -76,6 +108,9 @@ class Cloud extends ChangeNotifier {
           'uid': uid,
           'refreshToken': _refreshToken,
           'lastSync': lastSync,
+          'wsRegistered': wsRegistered,
+          'wsApproved': wsApproved,
+          'wsName': wsName,
         }));
   }
 
@@ -294,9 +329,112 @@ class Cloud extends ChangeNotifier {
     _refreshToken = '';
     uid = '';
     email = '';
+    wsRegistered = false;
+    wsApproved = false;
+    wsName = '';
     _pending.clear();
     await _save();
     _paint('off');
+  }
+
+  // ── company approval registry ──────────────────────────────────────────────
+  //  shaqaale_workspaces/{uid}: { email, name, approved, createdAt }.
+  //  A company reads/writes only its OWN doc; the master lists all and flips
+  //  `approved`. Holds NO HR data — that stays private to each uid.
+  Uri _wsUrl([String? u]) => Uri.parse(
+      'https://firestore.googleapis.com/v1/projects/$_projectId/databases/(default)/documents/shaqaale_workspaces/${u ?? uid}');
+
+  Future<void> registerWorkspace(String name) async {
+    final token = await _freshToken();
+    final body = jsonEncode({
+      'fields': {
+        'email': {'stringValue': email},
+        'name': {'stringValue': name},
+        'approved': {'booleanValue': false},
+        'createdAt': {
+          'integerValue': DateTime.now().millisecondsSinceEpoch.toString()
+        },
+      }
+    });
+    final r = await http.patch(_wsUrl(),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token'
+        },
+        body: body);
+    if (r.statusCode >= 400) throw CloudError(_httpErr(r));
+  }
+
+  Future<Workspace?> workspaceStatus() async {
+    final token = await _freshToken();
+    final r = await http.get(_wsUrl(), headers: {'Authorization': 'Bearer $token'});
+    if (r.statusCode == 404) return null;
+    if (r.statusCode >= 400) throw CloudError(_httpErr(r));
+    final doc = Map<String, dynamic>.from(jsonDecode(r.body));
+    final f = doc['fields'] ?? {};
+    return Workspace(
+      uid: uid,
+      email: (f['email']?['stringValue'] ?? '').toString(),
+      name: (f['name']?['stringValue'] ?? '').toString(),
+      approved: f['approved']?['booleanValue'] == true,
+    );
+  }
+
+  /// Refresh cached approval state (company accounts only). Keeps last-known
+  /// values on failure so an offline device still gates correctly.
+  Future<void> refreshWorkspace() async {
+    if (!on || master) return;
+    try {
+      final ws = await workspaceStatus();
+      wsRegistered = ws != null;
+      wsApproved = ws?.approved ?? false;
+      wsName = ws?.name ?? '';
+      await _save();
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  /// Master: list every company.
+  Future<List<Workspace>> listWorkspaces() async {
+    final token = await _freshToken();
+    final url = Uri.parse(
+        'https://firestore.googleapis.com/v1/projects/$_projectId/databases/(default)/documents/shaqaale_workspaces?pageSize=300');
+    final r = await http.get(url, headers: {'Authorization': 'Bearer $token'});
+    if (r.statusCode >= 400) throw CloudError(_httpErr(r));
+    final j = Map<String, dynamic>.from(jsonDecode(r.body));
+    final docs = (j['documents'] as List?) ?? [];
+    return docs.map((d) {
+      final doc = Map<String, dynamic>.from(d);
+      final f = doc['fields'] ?? {};
+      final nm = (doc['name'] ?? '').toString();
+      return Workspace(
+        uid: nm.substring(nm.lastIndexOf('/') + 1),
+        email: (f['email']?['stringValue'] ?? '').toString(),
+        name: (f['name']?['stringValue'] ?? '').toString(),
+        approved: f['approved']?['booleanValue'] == true,
+        createdAt:
+            int.tryParse((f['createdAt']?['integerValue'] ?? '0').toString()) ??
+                0,
+      );
+    }).toList();
+  }
+
+  /// Master: approve (or revoke) a company — patches only `approved`.
+  Future<void> approveWorkspace(String u, bool approved) async {
+    final token = await _freshToken();
+    final url = Uri.parse(
+        'https://firestore.googleapis.com/v1/projects/$_projectId/databases/(default)/documents/shaqaale_workspaces/$u?updateMask.fieldPaths=approved');
+    final r = await http.patch(url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token'
+        },
+        body: jsonEncode({
+          'fields': {
+            'approved': {'booleanValue': approved}
+          }
+        }));
+    if (r.statusCode >= 400) throw CloudError(_httpErr(r));
   }
 
   Future<int> boot() async {
@@ -309,7 +447,9 @@ class Cloud extends ChangeNotifier {
     _paint('sync');
     try {
       await _freshToken();
-      return await pull(force: false);
+      final n = await pull(force: false);
+      await refreshWorkspace();
+      return n;
     } catch (e) {
       lastError = errText(e);
       _paint('err');

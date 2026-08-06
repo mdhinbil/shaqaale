@@ -133,12 +133,12 @@ class Store extends ChangeNotifier {
 
   /// A brand-new company account starts empty — clear any records left on this
   /// device (e.g. from testing), keep default departments, then seed the cloud.
-  Future<void> startNewCompany() async {
+  Future<void> startNewCompany(String companyName) async {
     employees = [];
     attendance = [];
     leaves = [];
     payslips = [];
-    company = 'My Company';
+    company = companyName.trim().isEmpty ? 'My Company' : companyName.trim();
     saveEmployees();
     saveAttendance();
     saveLeaves();
