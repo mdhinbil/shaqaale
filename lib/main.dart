@@ -76,6 +76,16 @@ class ShaqaaleApp extends StatelessWidget {
             textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
           ),
         ),
+        // Bigger, more legible bottom-nav labels and icons (esp. on tablets).
+        navigationBarTheme: NavigationBarThemeData(
+          labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
+                fontSize: 13.5,
+                fontWeight: states.contains(WidgetState.selected)
+                    ? FontWeight.w800
+                    : FontWeight.w600,
+              )),
+          iconTheme: WidgetStateProperty.all(const IconThemeData(size: 27)),
+        ),
       ),
       home: const RootGate(),
     );
@@ -159,7 +169,7 @@ class _HomeShellState extends State<HomeShell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
-        height: 66,
+        height: 72,
         destinations: [
           NavigationDestination(
             icon: const Icon(Icons.dashboard_outlined),
