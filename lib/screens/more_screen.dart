@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
+import '../photo_util.dart';
 import 'cloud_section.dart';
 import 'leaves_screen.dart';
 import 'reports_screen.dart';
@@ -32,6 +33,22 @@ class _MoreScreenState extends State<MoreScreen> {
   void _say(String m) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  }
+
+  Future<void> _changeAdminPhoto() async {
+    final r = await choosePhoto(context, hasPhoto: store.adminPhoto.isNotEmpty);
+    if (r == null) return;
+    store.adminPhoto = r;
+    store.saveSettings();
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _changeLogo() async {
+    final r = await choosePhoto(context, hasPhoto: store.companyLogo.isNotEmpty);
+    if (r == null) return;
+    store.companyLogo = r;
+    store.saveSettings();
+    if (mounted) setState(() {});
   }
 
   void _saveSettings() {
@@ -191,9 +208,22 @@ class _MoreScreenState extends State<MoreScreen> {
         children: [
           Card(
             child: ListTile(
-              leading: const CircleAvatar(
-                  backgroundColor: kBlue,
-                  child: Icon(Icons.person, color: Colors.white)),
+              leading: GestureDetector(
+                onTap: _changeAdminPhoto,
+                child: Stack(
+                  alignment: Alignment.bottomRight,
+                  children: [
+                    photoAvatar(store.adminPhoto, store.user?.name ?? 'Admin'),
+                    Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                          color: kBlue, shape: BoxShape.circle),
+                      child: const Icon(Icons.photo_camera,
+                          color: Colors.white, size: 10),
+                    ),
+                  ],
+                ),
+              ),
               title: Text(store.user?.name ?? 'Admin',
                   style: const TextStyle(fontWeight: FontWeight.w800)),
               subtitle: Text(
@@ -255,6 +285,49 @@ class _MoreScreenState extends State<MoreScreen> {
               padding: const EdgeInsets.all(14),
               child: Column(
                 children: [
+                  Row(children: [
+                    GestureDetector(
+                      onTap: _changeLogo,
+                      child: Stack(
+                        alignment: Alignment.bottomRight,
+                        children: [
+                          Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEAF2FF),
+                              borderRadius: BorderRadius.circular(12),
+                              image: store.companyLogo.isNotEmpty
+                                  ? DecorationImage(
+                                      image: MemoryImage(
+                                          base64DecodeSafe(store.companyLogo)),
+                                      fit: BoxFit.cover)
+                                  : null,
+                            ),
+                            child: store.companyLogo.isEmpty
+                                ? const Icon(Icons.business, color: kBlue)
+                                : null,
+                          ),
+                          Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: const BoxDecoration(
+                                color: kBlue, shape: BoxShape.circle),
+                            child: const Icon(Icons.photo_camera,
+                                color: Colors.white, size: 10),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(t('Company logo', 'Astaanta shirkadda'),
+                          style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF5C6B82))),
+                    ),
+                  ]),
+                  const SizedBox(height: 12),
                   TextField(
                       controller: _company,
                       decoration: InputDecoration(

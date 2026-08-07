@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
+import '../photo_util.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -9,7 +10,16 @@ class DashboardScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        titleSpacing: 16,
+        titleSpacing: store.companyLogo.isNotEmpty ? 8 : 16,
+        leading: store.companyLogo.isNotEmpty
+            ? Padding(
+                padding: const EdgeInsets.only(left: 14),
+                child: CircleAvatar(
+                    radius: 15,
+                    backgroundImage:
+                        MemoryImage(base64DecodeSafe(store.companyLogo))),
+              )
+            : null,
         title: Text(store.company,
             maxLines: 1, overflow: TextOverflow.ellipsis),
       ),

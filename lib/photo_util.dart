@@ -1,7 +1,17 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'main.dart';
+
+/// Decode a base64 image, returning empty bytes on bad input (never throws).
+Uint8List base64DecodeSafe(String s) {
+  try {
+    return base64Decode(s);
+  } catch (_) {
+    return Uint8List(0);
+  }
+}
 
 Future<String?> _b64(ImageSource src) async {
   final x = await ImagePicker().pickImage(

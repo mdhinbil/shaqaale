@@ -30,6 +30,8 @@ class Store extends ChangeNotifier {
 
   // Settings
   String company = 'My Company';
+  String companyLogo = ''; // base64 company logo, or ''
+  String adminPhoto = ''; // base64 admin profile picture, or ''
   String currency = 'USD'; // default display currency for totals
   double fxSos = 580, fxSlsh = 8500; // 1 USD -> local
   String lang = 'en';
@@ -65,6 +67,8 @@ class Store extends ChangeNotifier {
     departments = _strings(kDepts);
     final s = _map(kSettings);
     company = (s['company'] ?? 'My Company').toString();
+    companyLogo = (s['companyLogo'] ?? '').toString();
+    adminPhoto = (s['adminPhoto'] ?? '').toString();
     currency = (s['currency'] ?? 'USD').toString();
     fxSos = (s['fxSos'] as num?)?.toDouble() ?? 580;
     fxSlsh = (s['fxSlsh'] as num?)?.toDouble() ?? 8500;
@@ -323,6 +327,8 @@ class Store extends ChangeNotifier {
   void saveSettings() {
     _write(kSettings, {
       'company': company,
+      'companyLogo': companyLogo,
+      'adminPhoto': adminPhoto,
       'currency': currency,
       'fxSos': fxSos,
       'fxSlsh': fxSlsh,
