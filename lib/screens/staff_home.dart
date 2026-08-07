@@ -323,7 +323,7 @@ class _StaffHomeState extends State<StaffHome> {
                     child: Row(children: [
                       _langBtn('English', 'en'),
                       const SizedBox(width: 8),
-                      _langBtn('Soomaali', 'so'),
+                      _langBtn('Somali', 'so'),
                     ]),
                   ),
                 ),

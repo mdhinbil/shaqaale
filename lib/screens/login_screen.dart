@@ -142,7 +142,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             borderRadius: BorderRadius.circular(10)),
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
                           _lang('English', 'en'),
-                          _lang('Soomaali', 'so'),
+                          _lang('Somali', 'so'),
                         ]),
                       ),
                       const SizedBox(height: 18),

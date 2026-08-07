@@ -254,7 +254,7 @@ class _PayslipSheetState extends State<_PayslipSheet> {
                   _chip(t('Overtime', 'Saacado dheeraad'), false),
                   _chip(t('Bonus', 'Abaalmarin'), false),
                   _chip(t('Tax', 'Cashuur'), true),
-                  _chip(t('Advance', 'Sulfad'), true),
+                  _chip(t('Advance', 'Hormaris'), true),
                 ],
               ),
 
