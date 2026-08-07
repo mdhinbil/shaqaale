@@ -15,6 +15,7 @@ class Store extends ChangeNotifier {
   static const kAccounts = 'hr_accounts';
   static const kDepts = 'hr_departments';
   static const kSettings = 'hr_settings';
+  static const kMessages = 'hr_messages';
 
   late SharedPreferences _sp;
 
@@ -24,6 +25,7 @@ class Store extends ChangeNotifier {
   List<Payslip> payslips = [];
   List<Account> accounts = [];
   List<String> departments = [];
+  List<Message> messages = [];
 
   Account? user;
   String staffEmpId = ''; // set when a staff member (not an admin) is signed in
@@ -64,6 +66,7 @@ class Store extends ChangeNotifier {
     leaves = _list(kLeaves).map((e) => Leave.fromJson(e)).toList();
     payslips = _list(kPayslips).map((e) => Payslip.fromJson(e)).toList();
     accounts = _list(kAccounts).map((e) => Account.fromJson(e)).toList();
+    messages = _list(kMessages).map((e) => Message.fromJson(e)).toList();
     departments = _strings(kDepts);
     final s = _map(kSettings);
     company = (s['company'] ?? 'My Company').toString();
@@ -321,6 +324,50 @@ class Store extends ChangeNotifier {
 
   void saveAccounts() {
     _write(kAccounts, accounts.map((e) => e.toJson()).toList());
+    notifyListeners();
+  }
+
+  void saveMessages() {
+    _write(kMessages, messages.map((e) => e.toJson()).toList());
+    notifyListeners();
+  }
+
+  // ── messages ────────────────────────────────────────────────────────────────
+  /// A stable id for the signed-in sender (admin or staff).
+  String get _senderId =>
+      isStaff ? 'emp_$staffEmpId' : (user?.id ?? 'admin');
+
+  void sendMessage(String text) {
+    final t = text.trim();
+    if (t.isEmpty) return;
+    messages.add(Message(
+      id: 'm${DateTime.now().microsecondsSinceEpoch}',
+      senderId: _senderId,
+      senderName: user?.name ?? 'Admin',
+      senderRole: isStaff ? 'staff' : 'admin',
+      text: t,
+      ts: DateTime.now().millisecondsSinceEpoch,
+    ));
+    if (messages.length > 300) messages = messages.sublist(messages.length - 300);
+    saveMessages();
+  }
+
+  /// Unread = messages from someone else, newer than the last time I opened them.
+  int get unreadMessages {
+    final seen = _sp.getInt('hr_msg_seen') ?? 0;
+    return messages
+        .where((m) => m.ts > seen && m.senderId != _senderId)
+        .length;
+  }
+
+  bool isMine(Message m) => m.senderId == _senderId;
+
+  void markMessagesSeen() {
+    var latest = 0;
+    for (final m in messages) {
+      if (m.ts > latest) latest = m.ts;
+    }
+    _sp.setInt('hr_msg_seen', latest);
     notifyListeners();
   }
 

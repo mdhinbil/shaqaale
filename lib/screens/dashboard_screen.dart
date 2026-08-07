@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
 import '../photo_util.dart';
+import 'messages_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -22,6 +23,24 @@ class DashboardScreen extends StatelessWidget {
             : null,
         title: Text(store.company,
             maxLines: 1, overflow: TextOverflow.ellipsis),
+        actions: [
+          ListenableBuilder(
+            listenable: store,
+            builder: (context, _) {
+              final n = store.unreadMessages;
+              return IconButton(
+                tooltip: t('Messages', 'Fariimaha'),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const MessagesScreen())),
+                icon: Badge(
+                  isLabelVisible: n > 0,
+                  label: Text('$n'),
+                  child: const Icon(Icons.notifications_outlined),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(14, 6, 14, 24),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../main.dart';
 import '../models/models.dart';
 import '../photo_util.dart';
+import 'messages_screen.dart';
 
 /// What a signed-in staff member (not an admin) sees: their own profile, which
 /// they can edit, their password, and read-only payslips and attendance.
@@ -215,7 +216,24 @@ class _StaffHomeState extends State<StaffHome> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(t('My profile', 'Profile-kayga'))),
+      appBar: AppBar(
+        title: Text(t('My profile', 'Profile-kayga')),
+        actions: [
+          IconButton(
+            tooltip: t('Messages', 'Fariimaha'),
+            onPressed: () async {
+              await Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const MessagesScreen()));
+              if (mounted) setState(() {});
+            },
+            icon: Badge(
+              isLabelVisible: store.unreadMessages > 0,
+              label: Text('${store.unreadMessages}'),
+              child: const Icon(Icons.notifications_outlined),
+            ),
+          ),
+        ],
+      ),
       body: e == null
           ? Center(child: Text(t('No profile', 'Profile ma jiro')))
           : ListView(

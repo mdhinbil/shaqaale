@@ -6,6 +6,11 @@ double _num(dynamic v) {
   return double.tryParse((v ?? '').toString()) ?? 0;
 }
 
+int _int(dynamic v) {
+  if (v is num) return v.toInt();
+  return int.tryParse((v ?? '').toString()) ?? 0;
+}
+
 class Employee {
   String id, name, phone, email, dept, position, currency, status, hired, gender, note;
   String username, password; // optional self-service login
@@ -184,6 +189,38 @@ class Payslip {
   double get deductions =>
       items.where((i) => i.deduct).fold(0.0, (a, i) => a + i.amount);
   double get net => base + earnings - deductions;
+}
+
+/// A company message (announcement / staff message). Shared in the company's
+/// synced data, shown newest-last like a chat.
+class Message {
+  String id, senderId, senderName, senderRole, text;
+  int ts;
+  Message({
+    required this.id,
+    required this.senderId,
+    required this.senderName,
+    required this.senderRole,
+    required this.text,
+    required this.ts,
+  });
+
+  factory Message.fromJson(Map<String, dynamic> j) => Message(
+        id: (j['id'] ?? '').toString(),
+        senderId: (j['senderId'] ?? '').toString(),
+        senderName: (j['senderName'] ?? '').toString(),
+        senderRole: (j['senderRole'] ?? 'staff').toString(),
+        text: (j['text'] ?? '').toString(),
+        ts: _int(j['ts']),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id, 'senderId': senderId, 'senderName': senderName,
+        'senderRole': senderRole, 'text': text, 'ts': ts,
+      };
+
+  DateTime get when => DateTime.fromMillisecondsSinceEpoch(ts);
+  bool get isAdmin => senderRole == 'admin';
 }
 
 class Account {

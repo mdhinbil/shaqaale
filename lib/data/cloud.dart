@@ -26,7 +26,7 @@ const kMasterEmail = 'admin@mareegtech.com';
 
 const cloudKeys = [
   'hr_employees', 'hr_attendance', 'hr_leaves', 'hr_payslips',
-  'hr_departments', 'hr_settings', 'hr_accounts',
+  'hr_departments', 'hr_settings', 'hr_accounts', 'hr_messages',
 ];
 
 class SyncInfo {
