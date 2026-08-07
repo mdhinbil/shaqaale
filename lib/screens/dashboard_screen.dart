@@ -32,13 +32,14 @@ class DashboardScreen extends StatelessWidget {
             childAspectRatio: 1.55,
             children: [
               _Stat(t('Active staff', 'Shaqaale firfircoon'),
-                  '${store.activeCount}', kNavy, dark: true),
+                  '${store.activeCount}', kBlue, dark: true),
               _Stat(t('Present today', 'Maanta jooga'), '${store.presentToday}',
-                  kGreen),
+                  kGreen, dark: true),
               _Stat(t('Pending leaves', 'Fasax sugaya'),
-                  '${store.pendingLeaves}', const Color(0xFFE0842B)),
+                  '${store.pendingLeaves}', const Color(0xFFE0842B), dark: true),
               _Stat(t('Payroll (month)', 'Mushahar (bishaan)'),
-                  store.money(store.payrollThisMonthUsd(), 'USD'), kBlue),
+                  store.money(store.payrollThisMonthUsd(), 'USD'), kCyan,
+                  dark: true),
             ],
           ),
           const SizedBox(height: 16),
@@ -111,7 +112,7 @@ class _Stat extends StatelessWidget {
               style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: dark ? const Color(0xFFAEB9CC) : const Color(0xFF5C6B82))),
+                  color: dark ? Colors.white70 : const Color(0xFF5C6B82))),
         ],
       ),
     );
