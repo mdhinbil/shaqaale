@@ -66,7 +66,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
         padding: const EdgeInsets.fromLTRB(14, 8, 14, 90),
         children: [
           Card(
-            color: kNavy,
+            color: kBlue,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -74,7 +74,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                 children: [
                   Text('${t('Month', 'Bisha')} · $m',
                       style: const TextStyle(
-                          color: Color(0xFFAEB9CC),
+                          color: Colors.white70,
                           fontSize: 12.5,
                           fontWeight: FontWeight.w700)),
                   const SizedBox(height: 4),
@@ -85,7 +85,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                           fontWeight: FontWeight.w800)),
                   Text('${slips.length} ${t('payslips', 'warqadaha mushahar')}',
                       style: const TextStyle(
-                          color: Color(0xFFAEB9CC), fontSize: 12.5)),
+                          color: Colors.white70, fontSize: 12.5)),
                 ],
               ),
             ),
