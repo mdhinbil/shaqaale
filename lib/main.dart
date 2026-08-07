@@ -78,13 +78,23 @@ class ShaqaaleApp extends StatelessWidget {
         ),
         // Bigger, more legible bottom-nav labels and icons (esp. on tablets).
         navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: Colors.white,
+          indicatorColor: const Color(0xFFE4EEFF), // soft brand-blue pill
           labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
                 fontSize: 13.5,
                 fontWeight: states.contains(WidgetState.selected)
                     ? FontWeight.w800
                     : FontWeight.w600,
+                color: states.contains(WidgetState.selected)
+                    ? kBlue
+                    : const Color(0xFF6B7688),
               )),
-          iconTheme: WidgetStateProperty.all(const IconThemeData(size: 27)),
+          iconTheme: WidgetStateProperty.resolveWith((states) => IconThemeData(
+                size: 27,
+                color: states.contains(WidgetState.selected)
+                    ? kBlue
+                    : const Color(0xFF6B7688),
+              )),
         ),
       ),
       home: const RootGate(),
@@ -172,24 +182,24 @@ class _HomeShellState extends State<HomeShell> {
         height: 72,
         destinations: [
           NavigationDestination(
-            icon: const Icon(Icons.dashboard_outlined),
-            selectedIcon: const Icon(Icons.dashboard),
+            icon: const Icon(Icons.home_outlined),
+            selectedIcon: const Icon(Icons.home_rounded),
             label: t('Home', 'Guriga')),
           NavigationDestination(
-            icon: const Icon(Icons.people_alt_outlined),
-            selectedIcon: const Icon(Icons.people_alt),
+            icon: const Icon(Icons.groups_outlined),
+            selectedIcon: const Icon(Icons.groups_rounded),
             label: t('Staff', 'Shaqaale')),
           NavigationDestination(
-            icon: const Icon(Icons.event_available_outlined),
-            selectedIcon: const Icon(Icons.event_available),
+            icon: const Icon(Icons.fact_check_outlined),
+            selectedIcon: const Icon(Icons.fact_check_rounded),
             label: t('Attendance', 'Xaadiris')),
           NavigationDestination(
-            icon: const Icon(Icons.payments_outlined),
-            selectedIcon: const Icon(Icons.payments),
+            icon: const Icon(Icons.account_balance_wallet_outlined),
+            selectedIcon: const Icon(Icons.account_balance_wallet_rounded),
             label: t('Payroll', 'Mushahar')),
           NavigationDestination(
-            icon: const Icon(Icons.more_horiz),
-            selectedIcon: const Icon(Icons.more_horiz),
+            icon: const Icon(Icons.grid_view_outlined),
+            selectedIcon: const Icon(Icons.grid_view_rounded),
             label: t('More', 'Dheeraad')),
         ],
       ),
