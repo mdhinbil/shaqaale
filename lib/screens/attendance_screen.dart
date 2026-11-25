@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
+import '../models/models.dart';
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -46,6 +47,52 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     if (d != null) setState(() => _date = store.fmtDate(d));
   }
 
+  /// Admin sets or corrects a check-in / check-out time for [_date].
+  Future<void> _editTime(String empId, bool isIn) async {
+    final a = store.attOn(empId, _date);
+    final cur = isIn ? a?.checkIn ?? '' : a?.checkOut ?? '';
+    if (!isIn && (a == null || !a.checkedIn)) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(t('Set the check-in time first',
+              'Marka hore geli wakhtiga galitaanka'))));
+      return;
+    }
+    final m = hhmmToMinutes(cur) ??
+        hhmmToMinutes(isIn ? store.workStart : store.nowHHmm()) ??
+        480;
+    final r = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: m ~/ 60, minute: m % 60),
+      helpText: isIn ? t('Check in', 'Galitaan') : t('Check out', 'Ka bixitaan'),
+    );
+    if (r == null) return;
+    final v =
+        '${r.hour.toString().padLeft(2, '0')}:${r.minute.toString().padLeft(2, '0')}';
+    if (isIn) {
+      store.setTimes(empId, _date, checkIn: v);
+    } else {
+      store.setTimes(empId, _date, checkOut: v);
+    }
+    setState(() {});
+  }
+
+  Widget _timeChip(String label, String v, VoidCallback onTap) => InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Text('$label ',
+                style: const TextStyle(fontSize: 11.5, color: Color(0xFF8B97A8))),
+            Text(v.isEmpty ? '--:--' : v,
+                style: const TextStyle(
+                    fontSize: 12.5, fontWeight: FontWeight.w800, color: kNavy)),
+            const SizedBox(width: 2),
+            const Icon(Icons.edit, size: 11, color: Color(0xFFB0BAC8)),
+          ]),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     final staff = store.employees.where((e) => e.active).toList()
@@ -54,6 +101,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final present =
         staff.where((e) => store.statusOn(e.id, _date) == 'present').length;
     final marked = staff.where((e) => store.statusOn(e.id, _date) != null).length;
+    final inNow = staff.where((e) {
+      final a = store.attOn(e.id, _date);
+      return a != null && a.checkedIn && !a.checkedOut;
+    }).length;
 
     return Scaffold(
       appBar: AppBar(title: Text(t('Attendance', 'Xaadiris'))),
@@ -118,7 +169,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   child: Row(
                     children: [
                       Text(
-                          '${t('Marked', 'La calaamadeeyay')}: $marked / ${staff.length}',
+                          '${t('Marked', 'La calaamadeeyay')}: $marked / ${staff.length}'
+                          ' · ${t('Checked in', 'Gudaha jooga')}: $inNow',
                           style: const TextStyle(
                               fontSize: 12, color: Color(0xFF8B97A8))),
                       const Spacer(),
@@ -161,7 +213,28 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                             _color(store.statusOn(e.id, _date)!))),
                               ),
                           ]),
-                          const SizedBox(height: 8),
+                          Builder(builder: (_) {
+                            final a = store.attOn(e.id, _date);
+                            final w = a?.workedMinutes ?? 0;
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Row(children: [
+                                _timeChip(t('In', 'Gal'), a?.checkIn ?? '',
+                                    () => _editTime(e.id, true)),
+                                const SizedBox(width: 6),
+                                _timeChip(t('Out', 'Bax'), a?.checkOut ?? '',
+                                    () => _editTime(e.id, false)),
+                                const Spacer(),
+                                if (w > 0)
+                                  Text(fmtMinutes(w),
+                                      style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w800,
+                                          color: kGreen)),
+                              ]),
+                            );
+                          }),
+                          const SizedBox(height: 6),
                           Row(
                             children: [
                               for (final s in _opts)

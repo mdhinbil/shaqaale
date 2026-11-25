@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../main.dart';
 import '../models/models.dart';
@@ -13,6 +14,153 @@ class StaffHome extends StatefulWidget {
 }
 
 class _StaffHomeState extends State<StaffHome> {
+  Timer? _tick; // keeps the "time worked so far" figure live
+
+  @override
+  void initState() {
+    super.initState();
+    _tick = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  void _doCheckIn() {
+    store.checkIn(store.staffEmpId);
+    final a = store.attOn(store.staffEmpId, store.today());
+    setState(() {});
+    if (a == null) return;
+    _say(a.status == 'late'
+        ? '${t('Checked in late at', 'Waad soo daahday, waxaad gashay')} ${a.checkIn}'
+        : '${t('Checked in at', 'Waxaad gashay')} ${a.checkIn}');
+  }
+
+  Future<void> _doCheckOut() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(t('Check out now?', 'Hadda ka bax?')),
+        content: Text(t('You can only check out once per day.',
+            'Maalintii hal mar oo keliya ayaad ka bixi kartaa.')),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(t('Cancel', 'Jooji'))),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(t('Check out', 'Ka bax'))),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    store.checkOut(store.staffEmpId);
+    final a = store.attOn(store.staffEmpId, store.today());
+    setState(() {});
+    if (a == null) return;
+    _say('${t('Checked out at', 'Waxaad ka baxday')} ${a.checkOut} · ${fmtMinutes(a.workedMinutes)}');
+  }
+
+  Widget _todayCard() {
+    final a = store.attOn(store.staffEmpId, store.today());
+    final inT = a?.checkIn ?? '', outT = a?.checkOut ?? '';
+    final onLeave = a?.status == 'leave' && inT.isEmpty;
+    var worked = 0;
+    if (a != null && a.checkedIn) {
+      if (a.checkedOut) {
+        worked = a.workedMinutes;
+      } else {
+        final s = hhmmToMinutes(inT) ?? 0;
+        final n = hhmmToMinutes(store.nowHHmm()) ?? s;
+        worked = n > s ? n - s : 0;
+      }
+    }
+    final isLate = a?.status == 'late';
+
+    Widget time(String label, String v, IconData ic) => Expanded(
+          child: Column(children: [
+            Icon(ic, size: 18, color: const Color(0xFF8B97A8)),
+            const SizedBox(height: 3),
+            Text(v.isEmpty ? '--:--' : v,
+                style: const TextStyle(
+                    fontSize: 20, fontWeight: FontWeight.w800, color: kNavy)),
+            Text(label,
+                style:
+                    const TextStyle(fontSize: 11.5, color: Color(0xFF6B7688))),
+          ]),
+        );
+
+    Widget action;
+    if (onLeave) {
+      action = _pill(t('On leave today', 'Maanta fasax ayaad tahay'), kBlue);
+    } else if (inT.isEmpty) {
+      action = SizedBox(
+        width: double.infinity,
+        child: FilledButton.icon(
+          style: FilledButton.styleFrom(backgroundColor: kGreen),
+          onPressed: _doCheckIn,
+          icon: const Icon(Icons.login_rounded),
+          label: Text(t('Check in', 'Gal shaqada')),
+        ),
+      );
+    } else if (outT.isEmpty) {
+      action = SizedBox(
+        width: double.infinity,
+        child: FilledButton.icon(
+          style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFE0842B)),
+          onPressed: _doCheckOut,
+          icon: const Icon(Icons.logout_rounded),
+          label: Text(t('Check out', 'Ka bax shaqada')),
+        ),
+      );
+    } else {
+      action = _pill(t('Done for today', 'Maanta waad dhammaysay'), kGreen);
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+        child: Column(children: [
+          Row(children: [
+            Text(t('Today', 'Maanta'),
+                style: const TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.w800, color: kNavy)),
+            const SizedBox(width: 8),
+            Text(store.today(),
+                style:
+                    const TextStyle(fontSize: 12.5, color: Color(0xFF8B97A8))),
+            const Spacer(),
+            if (isLate) _pill(t('Late', 'Daahay'), const Color(0xFFE0842B)),
+          ]),
+          const SizedBox(height: 12),
+          Row(children: [
+            time(t('Check in', 'Galitaan'), inT, Icons.login_rounded),
+            time(t('Check out', 'Ka bixitaan'), outT, Icons.logout_rounded),
+            time(t('Worked', 'La shaqeeyay'),
+                inT.isEmpty ? '' : fmtMinutes(worked), Icons.timer_outlined),
+          ]),
+          const SizedBox(height: 14),
+          action,
+        ]),
+      ),
+    );
+  }
+
+  Widget _pill(String s, Color c) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+            color: c.withValues(alpha: .12),
+            borderRadius: BorderRadius.circular(20)),
+        child: Text(s,
+            style: TextStyle(
+                fontSize: 12, fontWeight: FontWeight.w800, color: c)),
+      );
+
   void _say(String m) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
@@ -266,6 +414,8 @@ class _StaffHomeState extends State<StaffHome> {
                     onTap: _editProfile,
                   ),
                 ),
+                const SizedBox(height: 8),
+                _todayCard(),
                 _label(t('Contact', 'Xiriir')),
                 Card(
                   child: Column(children: [

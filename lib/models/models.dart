@@ -64,14 +64,18 @@ class Employee {
   bool get active => status == 'active';
 }
 
-/// One attendance mark for an employee on a day (yyyy-mm-dd).
+/// One attendance mark for an employee on a day (yyyy-mm-dd), with optional
+/// check-in / check-out clock times ("HH:mm", or '' when not recorded).
 class Attendance {
   String id, empId, date, status; // present | absent | late | leave
+  String checkIn, checkOut;
   Attendance({
     required this.id,
     required this.empId,
     required this.date,
     this.status = 'present',
+    this.checkIn = '',
+    this.checkOut = '',
   });
 
   factory Attendance.fromJson(Map<String, dynamic> j) => Attendance(
@@ -79,11 +83,37 @@ class Attendance {
         empId: (j['empId'] ?? '').toString(),
         date: (j['date'] ?? '').toString(),
         status: (j['status'] ?? 'present').toString(),
+        checkIn: (j['checkIn'] ?? '').toString(),
+        checkOut: (j['checkOut'] ?? '').toString(),
       );
 
-  Map<String, dynamic> toJson() =>
-      {'id': id, 'empId': empId, 'date': date, 'status': status};
+  Map<String, dynamic> toJson() => {
+        'id': id, 'empId': empId, 'date': date, 'status': status,
+        'checkIn': checkIn, 'checkOut': checkOut,
+      };
+
+  bool get checkedIn => checkIn.isNotEmpty;
+  bool get checkedOut => checkOut.isNotEmpty;
+
+  /// Minutes between check-in and check-out (0 if either is missing).
+  int get workedMinutes {
+    final a = hhmmToMinutes(checkIn), b = hhmmToMinutes(checkOut);
+    if (a == null || b == null || b < a) return 0;
+    return b - a;
+  }
 }
+
+/// "08:30" -> 510, or null if not a valid time.
+int? hhmmToMinutes(String s) {
+  final p = s.split(':');
+  if (p.length != 2) return null;
+  final h = int.tryParse(p[0]), m = int.tryParse(p[1]);
+  if (h == null || m == null || h < 0 || h > 23 || m < 0 || m > 59) return null;
+  return h * 60 + m;
+}
+
+/// 538 -> "8h 58m".
+String fmtMinutes(int m) => m < 60 ? '${m}m' : '${m ~/ 60}h ${(m % 60).toString().padLeft(2, '0')}m';
 
 /// A leave request. from/to are yyyy-mm-dd.
 class Leave {

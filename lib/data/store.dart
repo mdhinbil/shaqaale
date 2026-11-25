@@ -37,6 +37,8 @@ class Store extends ChangeNotifier {
   String currency = 'USD'; // default display currency for totals
   double fxSos = 580, fxSlsh = 8500; // 1 USD -> local
   String lang = 'en';
+  String workStart = '08:00'; // check-ins after this time are marked late
+  bool onboarded = false; // first-launch intro has been seen on this device
 
   Future<void> init() async {
     _sp = await SharedPreferences.getInstance();
@@ -75,7 +77,10 @@ class Store extends ChangeNotifier {
     currency = (s['currency'] ?? 'USD').toString();
     fxSos = (s['fxSos'] as num?)?.toDouble() ?? 580;
     fxSlsh = (s['fxSlsh'] as num?)?.toDouble() ?? 8500;
+    workStart = (s['workStart'] ?? '08:00').toString();
+    if (hhmmToMinutes(workStart) == null) workStart = '08:00';
     lang = _sp.getString('hr_lang') == 'so' ? 'so' : 'en';
+    onboarded = _sp.getBool('hr_onboarded') ?? false;
   }
 
   List<Map<String, dynamic>> _list(String k) {
@@ -290,6 +295,12 @@ class Store extends ChangeNotifier {
   // Local i18n helper (store can't import main.dart's t() without a cycle).
   String t2(String en, String so) => lang == 'so' ? so : en;
 
+  void finishOnboarding() {
+    onboarded = true;
+    _sp.setBool('hr_onboarded', true);
+    notifyListeners();
+  }
+
   void setLang(String l) {
     lang = l == 'so' ? 'so' : 'en';
     _sp.setString('hr_lang', lang);
@@ -379,6 +390,7 @@ class Store extends ChangeNotifier {
       'currency': currency,
       'fxSos': fxSos,
       'fxSlsh': fxSlsh,
+      'workStart': workStart,
     });
     notifyListeners();
   }
@@ -423,6 +435,69 @@ class Store extends ChangeNotifier {
           status: status));
     }
     saveAttendance();
+  }
+
+  /// The attendance record for an employee on a day, or null.
+  Attendance? attOn(String empId, String date) {
+    for (final a in attendance) {
+      if (a.empId == empId && a.date == date) return a;
+    }
+    return null;
+  }
+
+  Attendance _ensureAtt(String empId, String date, String status) {
+    final a = attOn(empId, date);
+    if (a != null) return a;
+    final n = Attendance(
+        id: 'at${DateTime.now().microsecondsSinceEpoch}',
+        empId: empId,
+        date: date,
+        status: status);
+    attendance.add(n);
+    return n;
+  }
+
+  String nowHHmm() {
+    final n = DateTime.now();
+    return '${_2(n.hour)}:${_2(n.minute)}';
+  }
+
+  /// Check an employee in today. Marks them present, or late when after
+  /// [workStart]. No-op if already checked in.
+  void checkIn(String empId) {
+    final now = nowHHmm();
+    final a = _ensureAtt(empId, today(), 'present');
+    if (a.checkedIn) return;
+    a.checkIn = now;
+    a.checkOut = '';
+    final isLate = (hhmmToMinutes(now) ?? 0) > (hhmmToMinutes(workStart) ?? 480);
+    a.status = isLate ? 'late' : 'present';
+    saveAttendance();
+  }
+
+  /// Check an employee out today. No-op unless checked in and not yet out.
+  void checkOut(String empId) {
+    final a = attOn(empId, today());
+    if (a == null || !a.checkedIn || a.checkedOut) return;
+    a.checkOut = nowHHmm();
+    saveAttendance();
+  }
+
+  /// Admin correction of the clock times for a day ('' clears a time).
+  void setTimes(String empId, String date, {String? checkIn, String? checkOut}) {
+    final a = _ensureAtt(empId, date, 'present');
+    if (checkIn != null) a.checkIn = checkIn;
+    if (checkOut != null) a.checkOut = checkOut;
+    if (a.checkIn.isEmpty) a.checkOut = '';
+    saveAttendance();
+  }
+
+  /// Staff currently checked in and not yet out, today.
+  int get checkedInNow {
+    final d = today();
+    return attendance
+        .where((a) => a.date == d && a.checkedIn && !a.checkedOut)
+        .length;
   }
 
   String? todayStatus(String empId) => statusOn(empId, today());

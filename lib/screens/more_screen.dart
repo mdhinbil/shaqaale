@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
+import '../models/models.dart';
 import '../photo_util.dart';
 import 'cloud_section.dart';
 import 'leaves_screen.dart';
@@ -57,6 +58,19 @@ class _MoreScreenState extends State<MoreScreen> {
     store.fxSlsh = double.tryParse(_slsh.text.trim()) ?? store.fxSlsh;
     store.saveSettings();
     _say(t('Saved', 'La kaydiyay'));
+  }
+
+  Future<void> _pickWorkStart() async {
+    final m = hhmmToMinutes(store.workStart) ?? 480;
+    final r = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: m ~/ 60, minute: m % 60),
+    );
+    if (r == null) return;
+    store.workStart =
+        '${r.hour.toString().padLeft(2, '0')}:${r.minute.toString().padLeft(2, '0')}';
+    store.saveSettings();
+    if (mounted) setState(() {});
   }
 
   Future<void> _editProfile() async {
@@ -255,6 +269,19 @@ class _MoreScreenState extends State<MoreScreen> {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const ReportsScreen())),
+            ),
+          ),
+          _label(t('Work hours', 'Saacadaha shaqada')),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.schedule_outlined, color: kBlue),
+              title: Text(t('Work starts at', 'Shaqadu waxay bilaabataa')),
+              subtitle: Text(t('Check-ins after this time are marked Late',
+                  'Qofka galaa wakhtigan kadib waxaa loo calaamadeeyaa Daahay')),
+              trailing: Text(store.workStart,
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w800, color: kBlue)),
+              onTap: _pickWorkStart,
             ),
           ),
           _label(t('Leave', 'Fasax')),

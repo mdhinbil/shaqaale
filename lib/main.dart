@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'data/store.dart';
 import 'data/cloud.dart';
 import 'screens/login_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'screens/staff_home.dart';
 import 'screens/pending_screen.dart';
 import 'screens/companies_admin_screen.dart';
@@ -129,7 +130,11 @@ class _RootGateState extends State<RootGate> {
 
   @override
   Widget build(BuildContext context) {
-    if (store.user == null) return const LoginScreen();
+    if (store.user == null) {
+      // First launch on this device: show the intro once, then sign-in.
+      if (!store.onboarded) return const OnboardingScreen();
+      return const LoginScreen();
+    }
     // MareegTech master account manages approvals instead of running HR.
     if (cloud.master) return const CompaniesAdminScreen(isHome: true);
     // Staff self-service (local employee login) is never cloud-gated.
