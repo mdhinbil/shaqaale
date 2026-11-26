@@ -124,7 +124,7 @@ class _EmployeeSheet extends StatefulWidget {
 
 class _EmployeeSheetState extends State<_EmployeeSheet> {
   late final TextEditingController _n, _pos, _phone, _email, _sal, _hired, _note;
-  late final TextEditingController _un, _pw;
+  late final TextEditingController _un, _pw, _pin;
   late String _dept, _currency, _status;
   String _photo = '';
 
@@ -141,6 +141,7 @@ class _EmployeeSheetState extends State<_EmployeeSheet> {
     _note = TextEditingController(text: e?.note ?? '');
     _un = TextEditingController(text: e?.username ?? '');
     _pw = TextEditingController(text: e?.password ?? '');
+    _pin = TextEditingController(text: e?.pin ?? '');
     _dept = e?.dept.isNotEmpty == true ? e!.dept : (store.departments.isNotEmpty ? store.departments.first : '');
     _currency = e?.currency ?? 'USD';
     _status = e?.status ?? 'active';
@@ -149,7 +150,7 @@ class _EmployeeSheetState extends State<_EmployeeSheet> {
 
   @override
   void dispose() {
-    for (final c in [_n, _pos, _phone, _email, _sal, _hired, _note, _un, _pw]) {
+    for (final c in [_n, _pos, _phone, _email, _sal, _hired, _note, _un, _pw, _pin]) {
       c.dispose();
     }
     super.dispose();
@@ -160,6 +161,20 @@ class _EmployeeSheetState extends State<_EmployeeSheet> {
     if (name.isEmpty) return;
     final salary = double.tryParse(_sal.text.trim()) ?? 0;
     final e = widget.existing;
+    final pin = _pin.text.trim();
+    if (pin.isNotEmpty && !RegExp(r'^\d{4,6}$').hasMatch(pin)) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(t('Check-in PIN must be at least 4 digits',
+              'PIN-ka galitaanka waa inuu ahaadaa ugu yaraan 4 god'))));
+      return;
+    }
+    final clash = store.pinOwner(pin, exceptId: e?.id ?? '');
+    if (clash != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(
+              '${t('PIN already used by', 'PIN-kan waxaa isticmaala')} ${clash.name}')));
+      return;
+    }
     if (e != null) {
       e.name = name;
       e.position = _pos.text.trim();
@@ -173,6 +188,7 @@ class _EmployeeSheetState extends State<_EmployeeSheet> {
       e.note = _note.text.trim();
       e.username = _un.text.trim();
       e.password = _pw.text;
+      e.pin = pin;
       e.photo = _photo;
     } else {
       store.employees.add(Employee(
@@ -189,6 +205,7 @@ class _EmployeeSheetState extends State<_EmployeeSheet> {
         note: _note.text.trim(),
         username: _un.text.trim(),
         password: _pw.text,
+        pin: pin,
         photo: _photo,
       ));
     }
@@ -400,6 +417,18 @@ class _EmployeeSheetState extends State<_EmployeeSheet> {
                         decoration: InputDecoration(
                             labelText: t('Password', 'Furaha')))),
               ]),
+              const SizedBox(height: 10),
+              TextField(
+                  controller: _pin,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  decoration: InputDecoration(
+                      counterText: '',
+                      prefixIcon: const Icon(Icons.dialpad_rounded),
+                      labelText: t('Check-in PIN (entrance kiosk)',
+                          'PIN-ka galitaanka (qalabka albaabka)'),
+                      helperText: t('4–6 digits, typed at the entrance device',
+                          '4–6 god, lagu qoro qalabka albaabka'))),
               const SizedBox(height: 16),
               Row(children: [
                 if (widget.existing != null)

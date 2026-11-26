@@ -15,6 +15,7 @@ class Employee {
   String id, name, phone, email, dept, position, currency, status, hired, gender, note;
   String username, password; // optional self-service login
   String photo; // base64-encoded profile photo (compressed), or ''
+  String pin; // entrance-kiosk check-in PIN (digits), or ''
   double salary; // base monthly salary, in `currency`
 
   Employee({
@@ -32,6 +33,7 @@ class Employee {
     this.username = '',
     this.password = '',
     this.photo = '',
+    this.pin = '',
     this.salary = 0,
   });
 
@@ -50,6 +52,7 @@ class Employee {
         username: (j['username'] ?? '').toString(),
         password: (j['password'] ?? '').toString(),
         photo: (j['photo'] ?? '').toString(),
+        pin: (j['pin'] ?? '').toString(),
         salary: _num(j['salary']),
       );
 
@@ -58,7 +61,7 @@ class Employee {
         'position': position, 'currency': currency, 'status': status,
         'hired': hired, 'gender': gender, 'note': note,
         'username': username, 'password': password, 'photo': photo,
-        'salary': salary,
+        'pin': pin, 'salary': salary,
       };
 
   bool get active => status == 'active';

@@ -3,6 +3,7 @@ import 'data/store.dart';
 import 'data/cloud.dart';
 import 'screens/login_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/kiosk_screen.dart';
 import 'screens/staff_home.dart';
 import 'screens/pending_screen.dart';
 import 'screens/companies_admin_screen.dart';
@@ -130,6 +131,8 @@ class _RootGateState extends State<RootGate> {
 
   @override
   Widget build(BuildContext context) {
+    // Entrance device: only the check-in kiosk, until unlocked with its PIN.
+    if (store.kiosk) return const KioskScreen();
     if (store.user == null) {
       // First launch on this device: show the intro once, then sign-in.
       if (!store.onboarded) return const OnboardingScreen();

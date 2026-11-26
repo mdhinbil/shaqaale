@@ -60,6 +60,72 @@ class _MoreScreenState extends State<MoreScreen> {
     _say(t('Saved', 'La kaydiyay'));
   }
 
+  Future<void> _startKiosk() async {
+    final noPin =
+        store.employees.where((e) => e.active && e.pin.isEmpty).length;
+    final p1 = TextEditingController(), p2 = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(t('Start entrance kiosk', 'Bilow qalabka albaabka')),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(t(
+                'Leave this device at the entrance. Staff tap their name and type their check-in PIN to check in or out. HR screens are locked until you enter the exit PIN.',
+                'Qalabkan dhig albaabka. Shaqaaluhu waxay riixaan magacooda oo qoraan PIN-kooda si ay u galaan ama u baxaan. Shaashadaha HR waa xiran yihiin ilaa aad geliso PIN-ka ka bixitaanka.')),
+            if (noPin > 0) ...[
+              const SizedBox(height: 10),
+              Text(
+                  '⚠ $noPin ${t('active staff have no check-in PIN yet (set it in Staff → edit).', 'shaqaale firfircoon ayaan PIN lahayn (ku dar Shaqaale → wax ka beddel).')}',
+                  style: const TextStyle(
+                      color: Color(0xFFE0842B), fontWeight: FontWeight.w700)),
+            ],
+            const SizedBox(height: 12),
+            TextField(
+                controller: p1,
+                obscureText: true,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                decoration: InputDecoration(
+                    counterText: '',
+                    labelText: t('Exit PIN (4–6 digits)',
+                        'PIN-ka ka bixitaanka (4–6 god)'))),
+            const SizedBox(height: 10),
+            TextField(
+                controller: p2,
+                obscureText: true,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                decoration: InputDecoration(
+                    counterText: '',
+                    labelText: t('Confirm exit PIN', 'Xaqiiji PIN-ka'))),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(t('Cancel', 'Jooji'))),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(t('Start', 'Bilow'))),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final pin = p1.text.trim();
+    if (!RegExp(r'^\d{4,6}$').hasMatch(pin)) {
+      _say(t('Exit PIN must be 4–6 digits', 'PIN-ku waa inuu ahaadaa 4–6 god'));
+      return;
+    }
+    if (pin != p2.text.trim()) {
+      _say(t('PINs do not match', 'PIN-yadu isma laha'));
+      return;
+    }
+    store.startKiosk(pin); // RootGate switches to the kiosk screen
+  }
+
   Future<void> _pickWorkStart() async {
     final m = hhmmToMinutes(store.workStart) ?? 480;
     final r = await showTimePicker(
@@ -269,6 +335,33 @@ class _MoreScreenState extends State<MoreScreen> {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const ReportsScreen())),
+            ),
+          ),
+          _label(t('Entrance check-in', 'Galitaanka albaabka')),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.tablet_android_rounded, color: kBlue),
+              title: Text(t('Start entrance kiosk', 'Bilow qalabka albaabka')),
+              subtitle: Text(t(
+                  'Turn this device into the check-in point at the entrance',
+                  'Qalabkan ka dhig meesha laga galo shaqada ee albaabka')),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: _startKiosk,
+            ),
+          ),
+          Card(
+            child: SwitchListTile(
+              secondary: const Icon(Icons.phone_android_rounded, color: kBlue),
+              title: Text(t('Allow check-in from staff phones',
+                  'U oggolow shaqaalaha inay ka galaan taleefankooda')),
+              subtitle: Text(t('Off: staff can only check in at the entrance device',
+                  'Dami: shaqaaluhu waxay ka geli karaan qalabka albaabka oo keliya')),
+              value: store.phoneCheckIn,
+              onChanged: (v) {
+                store.phoneCheckIn = v;
+                store.saveSettings();
+                setState(() {});
+              },
             ),
           ),
           _label(t('Work hours', 'Saacadaha shaqada')),

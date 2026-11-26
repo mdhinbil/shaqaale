@@ -38,8 +38,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Icons.fingerprint_rounded,
           kGreen,
           t('Check in & check out', 'Gal & ka bax shaqada'),
-          t('Staff tap Check in when they arrive and Check out when they leave. Late arrivals and hours worked are recorded automatically.',
-              'Shaqaaluhu waxay riixaan "Gal" marka ay yimaadaan iyo "Ka bax" marka ay tagaan. Daahitaanka iyo saacadaha la shaqeeyay si toos ah ayaa loo diiwaangeliyaa.'),
+          t('A device at the entrance: staff tap their name and PIN to check in when they arrive and check out when they leave. Late arrivals and hours worked are recorded automatically.',
+              'Qalab albaabka yaal: shaqaaluhu waxay riixaan magacooda iyo PIN-kooda si ay u galaan marka ay yimaadaan una baxaan marka ay tagaan. Daahitaanka iyo saacadaha si toos ah ayaa loo diiwaangeliyaa.'),
         ),
         _Page(
           Icons.account_balance_wallet_rounded,

@@ -95,7 +95,18 @@ class _StaffHomeState extends State<StaffHome> {
         );
 
     Widget action;
-    if (onLeave) {
+    if (!store.phoneCheckIn && !(inT.isNotEmpty && outT.isNotEmpty) && !onLeave) {
+      action = Row(children: [
+        const Icon(Icons.tablet_android_rounded, size: 18, color: Color(0xFF6B7688)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+              t('Check in and out at the entrance device when you arrive and leave.',
+                  'Ka gal kana bax qalabka albaabka marka aad timaado iyo marka aad tagto.'),
+              style: const TextStyle(fontSize: 13, color: Color(0xFF6B7688))),
+        ),
+      ]);
+    } else if (onLeave) {
       action = _pill(t('On leave today', 'Maanta fasax ayaad tahay'), kBlue);
     } else if (inT.isEmpty) {
       action = SizedBox(

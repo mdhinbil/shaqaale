@@ -37,8 +37,11 @@ class Store extends ChangeNotifier {
   String currency = 'USD'; // default display currency for totals
   double fxSos = 580, fxSlsh = 8500; // 1 USD -> local
   String lang = 'en';
+  bool phoneCheckIn = false; // staff may check in from their own phone
   String workStart = '08:00'; // check-ins after this time are marked late
   bool onboarded = false; // first-launch intro has been seen on this device
+  bool kiosk = false; // this device is the entrance check-in kiosk
+  String kioskPin = ''; // PIN to leave kiosk mode (this device only)
 
   Future<void> init() async {
     _sp = await SharedPreferences.getInstance();
@@ -77,10 +80,13 @@ class Store extends ChangeNotifier {
     currency = (s['currency'] ?? 'USD').toString();
     fxSos = (s['fxSos'] as num?)?.toDouble() ?? 580;
     fxSlsh = (s['fxSlsh'] as num?)?.toDouble() ?? 8500;
+    phoneCheckIn = s['phoneCheckIn'] == true;
     workStart = (s['workStart'] ?? '08:00').toString();
     if (hhmmToMinutes(workStart) == null) workStart = '08:00';
     lang = _sp.getString('hr_lang') == 'so' ? 'so' : 'en';
     onboarded = _sp.getBool('hr_onboarded') ?? false;
+    kiosk = _sp.getBool('hr_kiosk') ?? false;
+    kioskPin = _sp.getString('hr_kiosk_pin') ?? '';
   }
 
   List<Map<String, dynamic>> _list(String k) {
@@ -295,6 +301,36 @@ class Store extends ChangeNotifier {
   // Local i18n helper (store can't import main.dart's t() without a cycle).
   String t2(String en, String so) => lang == 'so' ? so : en;
 
+  /// Turn this device into the entrance kiosk. Signs the admin out so the
+  /// HR screens can't be reached from the door; [exitPin] unlocks it again.
+  void startKiosk(String exitPin) {
+    kiosk = true;
+    kioskPin = exitPin;
+    _sp.setBool('hr_kiosk', true);
+    _sp.setString('hr_kiosk_pin', exitPin);
+    user = null;
+    staffEmpId = '';
+    notifyListeners();
+  }
+
+  /// Leave kiosk mode if [pin] matches. Returns true on success.
+  bool stopKiosk(String pin) {
+    if (pin != kioskPin) return false;
+    kiosk = false;
+    _sp.setBool('hr_kiosk', false);
+    notifyListeners();
+    return true;
+  }
+
+  /// Another active employee already using this kiosk PIN, or null.
+  Employee? pinOwner(String pin, {String exceptId = ''}) {
+    if (pin.isEmpty) return null;
+    for (final e in employees) {
+      if (e.id != exceptId && e.active && e.pin == pin) return e;
+    }
+    return null;
+  }
+
   void finishOnboarding() {
     onboarded = true;
     _sp.setBool('hr_onboarded', true);
@@ -391,6 +427,7 @@ class Store extends ChangeNotifier {
       'fxSos': fxSos,
       'fxSlsh': fxSlsh,
       'workStart': workStart,
+      'phoneCheckIn': phoneCheckIn,
     });
     notifyListeners();
   }
