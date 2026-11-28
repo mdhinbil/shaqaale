@@ -315,7 +315,12 @@ class Cloud extends ChangeNotifier {
     return SyncInfo(employees: n('hr_employees'), payslips: n('hr_payslips'));
   }
 
+  /// Whether the most recent [signIn] got past the password check (false if
+  /// it failed at auth, so an older session must NOT be used as if it were it).
+  bool lastAuthOk = false;
+
   Future<SyncInfo> signIn(String em, String pw, {bool isNew = false}) async {
+    lastAuthOk = false;
     final j = await _auth(isNew ? 'signUp' : 'signInWithPassword', em, pw);
     final prevUid = uid;
     email = em;
@@ -328,6 +333,7 @@ class Cloud extends ChangeNotifier {
       wsName = '';
     }
     await _applySession(j);
+    lastAuthOk = true;
     _paint('ok');
     return remoteInfo();
   }

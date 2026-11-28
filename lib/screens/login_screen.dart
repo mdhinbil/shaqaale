@@ -26,8 +26,13 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _go() async {
     final u = _u.text.trim();
     final p = _p.text;
+    // A company email that isn't the cloud account this device is on must go
+    // to that company's own cloud account — a local user with the same name
+    // here would open THIS device's company instead (Al-Huda opened MareegTech).
+    final otherCompany = u.contains('@') &&
+        u.toLowerCase() != cloud.email.trim().toLowerCase();
     // 1) Local admin / staff account (skip when creating a new cloud company).
-    if (!_isNew && store.signIn(u, p)) return;
+    if (!_isNew && !otherCompany && store.signIn(u, p)) return;
     // 2) Cloud company account (email) — sign in or create, then open the app.
     if (u.contains('@')) {
       setState(() {
@@ -54,8 +59,27 @@ class _LoginScreenState extends State<LoginScreen> {
         store.openCloudAdmin(u);
         return; // RootGate → app, or the pending screen if not yet approved
       } catch (e) {
+        // No such cloud account: it may be a staff login whose username is an
+        // email — allow a local account, but only for this device's company.
+        if (!cloud.lastAuthOk &&
+            e.toString().contains('EMAIL_NOT_FOUND') &&
+            !_isNew &&
+            store.signIn(u, p)) {
+          return;
+        }
         // Auth succeeded but reading data failed (e.g. Firestore rules not set
         // up yet): let the admin in anyway — sync retries from Settings.
+        // Wrong email/password etc.: never fall through to an older session.
+        if (!cloud.lastAuthOk) {
+          if (mounted) {
+            setState(() {
+              _busy = false;
+              _err = true;
+              _errMsg = Cloud.errText(e);
+            });
+          }
+          return;
+        }
         if (cloud.on && !store.ownedByOther(cloud.uid)) {
           if (store.dataOwner.isEmpty) store.dataOwner = cloud.uid;
           store.openCloudAdmin(u);
