@@ -46,10 +46,9 @@ class _LoginScreenState extends State<LoginScreen> {
           final name = _company.text.trim();
           await store.startNewCompany(name); // clean slate for the new company
           await cloud.registerWorkspace(name.isEmpty ? u : name); // pending approval
-        } else if (remote.has) {
-          await store.adoptCloudData(); // existing company: pull its cloud data
         } else {
-          await store.uploadLocalData(); // existing account, no cloud data yet
+          // Existing company: its cloud data, never another company's local data.
+          await store.openCompany(remote);
         }
         await cloud.refreshWorkspace();
         store.openCloudAdmin(u);
@@ -57,8 +56,24 @@ class _LoginScreenState extends State<LoginScreen> {
       } catch (e) {
         // Auth succeeded but reading data failed (e.g. Firestore rules not set
         // up yet): let the admin in anyway — sync retries from Settings.
-        if (cloud.on) {
+        if (cloud.on && !store.ownedByOther(cloud.uid)) {
+          if (store.dataOwner.isEmpty) store.dataOwner = cloud.uid;
           store.openCloudAdmin(u);
+          return;
+        }
+        if (cloud.on) {
+          // This device holds a different company's data and we couldn't
+          // load this one's — don't open the app showing the wrong company.
+          await cloud.signOut();
+          if (mounted) {
+            setState(() {
+              _busy = false;
+              _err = true;
+              _errMsg = t(
+                  "Couldn't load this company's data. Check the internet and try again.",
+                  'Xogta shirkaddan lama soo dejin karin. Hubi internetka oo isku day mar kale.');
+            });
+          }
           return;
         }
         if (mounted) {

@@ -317,7 +317,16 @@ class Cloud extends ChangeNotifier {
 
   Future<SyncInfo> signIn(String em, String pw, {bool isNew = false}) async {
     final j = await _auth(isNew ? 'signUp' : 'signInWithPassword', em, pw);
+    final prevUid = uid;
     email = em;
+    if ((j['localId'] ?? '').toString() != prevUid) {
+      // Unsent edits belong to the previous company — never push them here.
+      _timer?.cancel();
+      _pending.clear();
+      wsRegistered = false;
+      wsApproved = false;
+      wsName = '';
+    }
     await _applySession(j);
     _paint('ok');
     return remoteInfo();

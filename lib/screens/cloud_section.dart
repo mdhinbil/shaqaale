@@ -41,7 +41,12 @@ class _CloudSectionState extends State<CloudSection> {
     try {
       final remote = await cloud.signIn(creds.$1, creds.$2, isNew: creds.$3);
       final local = await cloud.localInfo();
-      if (remote.has && local.employees > 0) {
+      final other = store.ownedByOther(cloud.uid);
+      if (other) {
+        // Another company's data is on this device: never offer to upload it.
+        await store.openCompany(remote);
+        _say(t('Switched to this company', 'Loo wareegay shirkaddan'));
+      } else if (remote.has && local.employees > 0) {
         if (!mounted) return;
         final keep = await _askDirection(local, remote);
         if (keep == 'cloud') {
@@ -58,6 +63,7 @@ class _CloudSectionState extends State<CloudSection> {
         await store.uploadLocalData();
         _say(t('Data uploaded to cloud', 'Xogta waa la geliyay cloud-ka'));
       }
+      if (!cloud.master) store.dataOwner = cloud.uid;
     } catch (e) {
       _say(Cloud.errText(e));
     } finally {

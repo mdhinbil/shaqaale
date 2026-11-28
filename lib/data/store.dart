@@ -52,6 +52,9 @@ class Store extends ChangeNotifier {
       final applied = await cloud.boot();
       if (applied > 0) _readAll();
     } catch (_) {}
+    // Devices from before ownership tracking: the data here belongs to the
+    // cloud account this device was last signed in to.
+    if (dataOwner.isEmpty && cloud.uid.isNotEmpty) dataOwner = cloud.uid;
     if (accounts.isEmpty) {
       accounts = [
         Account(id: 'a1', name: 'Admin', username: 'admin', password: 'admin123', role: 'admin'),
@@ -149,6 +152,42 @@ class Store extends ChangeNotifier {
 
   Future<void> uploadLocalData() async => cloud.pushAll();
 
+  /// The cloud company (uid) whose records are on this device, or '' if the
+  /// data has never been linked to any cloud account.
+  String get dataOwner => _sp.getString('hr_data_uid') ?? '';
+  set dataOwner(String v) => _sp.setString('hr_data_uid', v);
+
+  /// True when this device holds ANOTHER company's records than [uid]. Those
+  /// must never be shown under, or uploaded into, the [uid] account.
+  bool ownedByOther(String uid) => dataOwner.isNotEmpty && dataOwner != uid;
+
+  /// Remove every company record from this device (fresh, empty company).
+  Future<void> clearLocalCompany() async {
+    for (final k in cloudKeys) {
+      await _sp.remove(k);
+      await _sp.remove('hr_ts_$k');
+    }
+    await _sp.remove('hr_msg_seen');
+    _readAll();
+    _ensureDefaults();
+    notifyListeners();
+  }
+
+  /// After a cloud company sign-in, load the right data onto this device:
+  /// the account's own cloud data if it has any; otherwise this device's data
+  /// only if it is unlinked or already belongs to this account — never another
+  /// company's.
+  Future<void> openCompany(SyncInfo remote) async {
+    if (remote.has) {
+      await adoptCloudData();
+    } else if (ownedByOther(cloud.uid)) {
+      await clearLocalCompany();
+    } else {
+      await uploadLocalData();
+    }
+    dataOwner = cloud.uid;
+  }
+
   /// A brand-new company account starts empty — clear any records left on this
   /// device (e.g. from testing), keep default departments, then seed the cloud.
   Future<void> startNewCompany(String companyName) async {
@@ -156,7 +195,16 @@ class Store extends ChangeNotifier {
     attendance = [];
     leaves = [];
     payslips = [];
+    messages = [];
+    accounts = [
+      Account(id: 'a1', name: 'Admin', username: 'admin', password: 'admin123', role: 'admin'),
+    ];
+    companyLogo = '';
+    adminPhoto = '';
     company = companyName.trim().isEmpty ? 'My Company' : companyName.trim();
+    dataOwner = cloud.uid;
+    saveMessages();
+    saveAccounts();
     saveEmployees();
     saveAttendance();
     saveLeaves();
