@@ -69,9 +69,7 @@ class _LoginScreenState extends State<LoginScreen> {
             setState(() {
               _busy = false;
               _err = true;
-              _errMsg = t(
-                  "Couldn't load this company's data. Check the internet and try again.",
-                  'Xogta shirkaddan lama soo dejin karin. Hubi internetka oo isku day mar kale.');
+              _errMsg = '${t("Couldn't load this company's data", 'Xogta shirkaddan lama soo dejin karin')}: ${Cloud.errText(e)}';
             });
           }
           return;
