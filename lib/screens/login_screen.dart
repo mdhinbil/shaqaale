@@ -59,12 +59,10 @@ class _LoginScreenState extends State<LoginScreen> {
         store.openCloudAdmin(u);
         return; // RootGate → app, or the pending screen if not yet approved
       } catch (e) {
-        // No such cloud account: it may be a staff login whose username is an
-        // email — allow a local account, but only for this device's company.
-        if (!cloud.lastAuthOk &&
-            e.toString().contains('EMAIL_NOT_FOUND') &&
-            !_isNew &&
-            store.signIn(u, p)) {
+        // Not a cloud company login (Firebase answers a non-cloud email with a
+        // generic "invalid credentials"), or offline: it may be a staff member
+        // or local user of THIS device's company whose username is an email.
+        if (!cloud.lastAuthOk && !_isNew && store.signIn(u, p)) {
           return;
         }
         // Auth succeeded but reading data failed (e.g. Firestore rules not set
