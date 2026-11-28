@@ -55,6 +55,7 @@ class Store extends ChangeNotifier {
     // Devices from before ownership tracking: the data here belongs to the
     // cloud account this device was last signed in to.
     if (dataOwner.isEmpty && cloud.uid.isNotEmpty) dataOwner = cloud.uid;
+    _purgeForeignMessages();
     if (accounts.isEmpty) {
       accounts = [
         Account(id: 'a1', name: 'Admin', username: 'admin', password: 'admin123', role: 'admin'),
@@ -150,7 +151,25 @@ class Store extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> uploadLocalData() async => cloud.pushAll();
+  Future<void> uploadLocalData() async {
+    // Unlinked device's own messages join the account they're uploaded to.
+    if (!ownedByOther(cloud.uid) && cloud.uid.isNotEmpty) {
+      for (final m in messages) {
+        if (m.co.isEmpty) m.co = cloud.uid;
+      }
+      _write(kMessages, messages.map((e) => e.toJson()).toList());
+    }
+    await cloud.pushAll();
+  }
+
+  /// The company whose data this device holds ('' if never linked).
+  String get companyId => dataOwner;
+
+  /// Only this company's messages. Messages copied in from another company
+  /// (old login bug) or untagged legacy ones are hidden — and dropped on the
+  /// next save, which cleans them out of the cloud too.
+  List<Message> get visibleMessages =>
+      messages.where((m) => m.co == companyId).toList();
 
   /// The cloud company (uid) whose records are on this device, or '' if the
   /// data has never been linked to any cloud account.
@@ -186,6 +205,14 @@ class Store extends ChangeNotifier {
       await uploadLocalData();
     }
     dataOwner = cloud.uid;
+    _purgeForeignMessages();
+  }
+
+  /// Drop messages that don't belong to this company, locally and (via the
+  /// normal sync) from this company's cloud copy.
+  void _purgeForeignMessages() {
+    if (companyId.isEmpty) return;
+    if (messages.any((m) => m.co != companyId)) saveMessages();
   }
 
   /// A brand-new company account starts empty — clear any records left on this
@@ -423,6 +450,7 @@ class Store extends ChangeNotifier {
   }
 
   void saveMessages() {
+    messages = visibleMessages;
     _write(kMessages, messages.map((e) => e.toJson()).toList());
     notifyListeners();
   }
@@ -436,6 +464,7 @@ class Store extends ChangeNotifier {
     final t = text.trim();
     if (t.isEmpty) return;
     messages.add(Message(
+      co: companyId,
       id: 'm${DateTime.now().microsecondsSinceEpoch}',
       senderId: _senderId,
       senderName: user?.name ?? 'Admin',
@@ -450,7 +479,7 @@ class Store extends ChangeNotifier {
   /// Unread = messages from someone else, newer than the last time I opened them.
   int get unreadMessages {
     final seen = _sp.getInt('hr_msg_seen') ?? 0;
-    return messages
+    return visibleMessages
         .where((m) => m.ts > seen && m.senderId != _senderId)
         .length;
   }
@@ -459,7 +488,7 @@ class Store extends ChangeNotifier {
 
   void markMessagesSeen() {
     var latest = 0;
-    for (final m in messages) {
+    for (final m in visibleMessages) {
       if (m.ts > latest) latest = m.ts;
     }
     _sp.setInt('hr_msg_seen', latest);

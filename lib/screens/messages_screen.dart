@@ -54,7 +54,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final msgs = [...store.messages]..sort((a, b) => a.ts.compareTo(b.ts));
+    final msgs = [...store.visibleMessages]..sort((a, b) => a.ts.compareTo(b.ts));
     return Scaffold(
       appBar: AppBar(title: Text(t('Messages', 'Fariimaha'))),
       body: Column(

@@ -228,8 +228,10 @@ class Payslip {
 /// synced data, shown newest-last like a chat.
 class Message {
   String id, senderId, senderName, senderRole, text;
+  String co; // owning company (cloud uid); '' = legacy / unlinked device
   int ts;
   Message({
+    this.co = '',
     required this.id,
     required this.senderId,
     required this.senderName,
@@ -244,12 +246,13 @@ class Message {
         senderName: (j['senderName'] ?? '').toString(),
         senderRole: (j['senderRole'] ?? 'staff').toString(),
         text: (j['text'] ?? '').toString(),
+        co: (j['co'] ?? '').toString(),
         ts: _int(j['ts']),
       );
 
   Map<String, dynamic> toJson() => {
         'id': id, 'senderId': senderId, 'senderName': senderName,
-        'senderRole': senderRole, 'text': text, 'ts': ts,
+        'senderRole': senderRole, 'text': text, 'ts': ts, 'co': co,
       };
 
   DateTime get when => DateTime.fromMillisecondsSinceEpoch(ts);
